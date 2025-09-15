@@ -28,7 +28,7 @@ A comprehensive AWS-based website monitoring solution that continuously monitors
 - **Multi-URL Support**: Monitor multiple websites simultaneously
 - **Historical Data**: 6-hour rolling window with 1-minute granularity
 
-## 🏗️ Architecture
+## Architecture
 
 The system consists of several AWS services working together in a serverless architecture:
 
