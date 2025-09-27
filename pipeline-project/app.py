@@ -3,11 +3,11 @@ import os
 
 import aws_cdk as cdk
 
-from website_monitor_cdk_stack import WebsiteMonitorCdkStack
+from pipeline_project.pipeline_project_stack import PipelineProjectStack
 
 
 app = cdk.App()
-WebsiteMonitorCdkStack(app, "WebsiteMonitorCdkStack",
+PipelineProjectStack(app, "PipelineProjectStack",
     # If you don't specify 'env', this stack will be environment-agnostic.
     # Account/Region-dependent features and context lookups will not work,
     # but a single synthesized template can be deployed anywhere.

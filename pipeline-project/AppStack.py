@@ -1,3 +1,6 @@
+"""
+AppStack.py - Contains website monitoring Lambda functions
+"""
 from aws_cdk import (
     Stack,
     Duration,
@@ -9,38 +12,56 @@ from aws_cdk import (
     aws_iam as iam,
     aws_sns as sns,
     aws_sns_subscriptions as subs,
-    aws_dynamodb as dynamodb,
 )
 from constructs import Construct
 import json
 from datetime import datetime
 
-# Import your constants (namespace, URLs, thresholds, etc.)
-from . import constants
+# Import your constants
+import constants
 
-
-class WebsiteMonitorCdkStack(Stack):
+class AppStack(Stack):
     """
-    This stack sets up:
-      - A Lambda that checks our websites and publishes custom metrics
-      - A schedule to run the Lambda every 5 minutes
-      - A CloudWatch Dashboard with widgets for Availability, Latency, Response Size
-      - Per-URL alarms that send notifications to SNS
-      - A DynamoDB table for storing alarm logs
-      - A Lambda that logs alarms from SNS into DynamoDB
+    AppStack contains the website monitoring Lambda functions
     """
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        
-        # 1) Lambda for website monitoring
+        # 1) Website Crawler Lambda
+        wh_lambda = self.create_website_crawler_lambda()
+
+        # 2) Alarm Logger Lambda  
+        db_lambda = self.create_alarm_logger_lambda()
+
+        # 3) SNS Topic for Alarms
+        alarm_topic = sns.Topic(
+            self,
+            "WebsiteAlarmTopic",
+            display_name="Website Monitoring Alarms"
+        )
+
+        # Human notification subscription
+        if getattr(constants, "ALERT_EMAIL", None):
+            alarm_topic.add_subscription(subs.EmailSubscription(constants.ALERT_EMAIL))
+
+        # Subscribe Lambda to SNS Topic
+        alarm_topic.add_subscription(subs.LambdaSubscription(db_lambda))
+
+        # 4) CloudWatch Dashboard
+        self.create_dashboard()
+
+        # 5) CloudWatch Alarms
+        self.create_alarms(alarm_topic)
+
+    def create_website_crawler_lambda(self):
+        """Create the website crawler Lambda function"""
         website_crawler = _lambda.Function(
             self,
             "WebsiteCrawlerLambda",
             runtime=_lambda.Runtime.PYTHON_3_9,
             handler="lambda_function.lambda_handler",
-            code=_lambda.Code.from_asset("lambda/website_crawler"),
+            code=_lambda.Code.from_asset("website_monitor_cdk/lambda/website_crawler"),
             environment={
                 "URLS": json.dumps(constants.URLS),
                 "NAMESPACE": constants.URL_MONITOR_NAMESPACE,
@@ -67,52 +88,26 @@ class WebsiteMonitorCdkStack(Stack):
         )
         rule.add_target(targets.LambdaFunction(website_crawler))
 
-        
-        # 2) SNS Topic for Alarms
-        
-        alarm_topic = sns.Topic(
-            self,
-            "WebsiteAlarmTopic",
-            display_name="Website Monitoring Alarms"
-        )
+        return website_crawler
 
-        # Human notification subscription
-        if getattr(constants, "ALERT_EMAIL", None):
-            alarm_topic.add_subscription(subs.EmailSubscription(constants.ALERT_EMAIL))
-
-        
-        # 3) DynamoDB Table for Alarm Logs
-        
-        alarm_table = dynamodb.Table(
-            self,
-            "WebsiteAlarmTable",
-            partition_key=dynamodb.Attribute(name="AlarmName", type=dynamodb.AttributeType.STRING),
-            sort_key=dynamodb.Attribute(name="Timestamp", type=dynamodb.AttributeType.STRING),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST
-        )
-
-        
-        # 4) Lambda for logging alarms
+    def create_alarm_logger_lambda(self):
+        """Create the alarm logger Lambda function"""
         alarm_logger = _lambda.Function(
             self,
             "AlarmLoggerLambda",
             runtime=_lambda.Runtime.PYTHON_3_9,
             handler="alarm_logger.lambda_handler",
-            code=_lambda.Code.from_asset("lambda/alarm_logger"),
+            code=_lambda.Code.from_asset("website_monitor_cdk/lambda/alarm_logger"),
             environment={
-                "ALARM_TABLE": alarm_table.table_name,
-                "FORCE_UPDATE": str(datetime.utcnow())  #
+                "ALARM_TABLE": "WebsiteAlarmTable",  # Will be set by DatabaseStack
+                "FORCE_UPDATE": str(datetime.utcnow())
             }
         )
 
-        # Grant Lambda permissions to write to DynamoDB
-        alarm_table.grant_write_data(alarm_logger)
+        return alarm_logger
 
-        # Subscribe Lambda to SNS Topic
-        alarm_topic.add_subscription(subs.LambdaSubscription(alarm_logger))
-
-        
-        # 5) CloudWatch Dashboard
+    def create_dashboard(self):
+        """Create CloudWatch Dashboard"""
         dashboard = cloudwatch.Dashboard(
             self,
             "Dashboard",
@@ -124,7 +119,7 @@ class WebsiteMonitorCdkStack(Stack):
         latency_series = []
         size_series = []
 
-        # Create metrics, alarms per URL
+        # Create metrics for each URL
         for idx, url in enumerate(constants.URLS, start=1):
             dimensions_map = {"URL": url}
 
@@ -159,6 +154,70 @@ class WebsiteMonitorCdkStack(Stack):
             avail_series.append(avail_metric)
             latency_series.append(latency_metric)
             size_series.append(response_size_metric)
+
+        # Dashboard Widgets
+        availability_widget = cloudwatch.GraphWidget(
+            title="Availability (all URLs)",
+            left=avail_series,
+            left_y_axis=cloudwatch.YAxisProps(min=0, max=1),
+            legend_position=cloudwatch.LegendPosition.RIGHT,
+            period=Duration.minutes(1),
+            width=24,
+            height=6,
+        )
+
+        latency_widget = cloudwatch.GraphWidget(
+            title="Latency (ms) — all URLs",
+            left=latency_series,
+            legend_position=cloudwatch.LegendPosition.RIGHT,
+            period=Duration.minutes(1),
+            width=24,
+            height=6,
+        )
+
+        response_size_widget = cloudwatch.GraphWidget(
+            title="Response Size (bytes) — all URLs",
+            left=size_series,
+            legend_position=cloudwatch.LegendPosition.RIGHT,
+            period=Duration.minutes(1),
+            width=24,
+            height=6,
+        )
+
+        dashboard.add_widgets(availability_widget)
+        dashboard.add_widgets(latency_widget)
+        dashboard.add_widgets(response_size_widget)
+
+    def create_alarms(self, alarm_topic):
+        """Create CloudWatch Alarms"""
+        # Create metrics, alarms per URL
+        for idx, url in enumerate(constants.URLS, start=1):
+            dimensions_map = {"URL": url}
+
+            # Metrics
+            avail_metric = cloudwatch.Metric(
+                namespace=constants.URL_MONITOR_NAMESPACE,
+                metric_name=constants.AVAILABILITY_METRIC_NAME,
+                dimensions_map=dimensions_map,
+                period=Duration.minutes(1),
+                statistic="Average",
+            )
+
+            latency_metric = cloudwatch.Metric(
+                namespace=constants.URL_MONITOR_NAMESPACE,
+                metric_name=constants.LATENCY_METRIC_NAME,
+                dimensions_map=dimensions_map,
+                period=Duration.minutes(1),
+                statistic="Average",
+            )
+
+            response_size_metric = cloudwatch.Metric(
+                namespace=constants.URL_MONITOR_NAMESPACE,
+                metric_name=constants.RESPONSE_SIZE_METRIC_NAME,
+                dimensions_map=dimensions_map,
+                period=Duration.minutes(1),
+                statistic="Average",
+            )
 
             # Alarms
             availability_alarm = cloudwatch.Alarm(
@@ -199,36 +258,3 @@ class WebsiteMonitorCdkStack(Stack):
                 treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
             )
             response_size_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
-
-        # Dashboard Widgets
-        availability_widget = cloudwatch.GraphWidget(
-            title="Availability (all URLs)",
-            left=avail_series,
-            left_y_axis=cloudwatch.YAxisProps(min=0, max=1),
-            legend_position=cloudwatch.LegendPosition.RIGHT,
-            period=Duration.minutes(1),
-            width=24,
-            height=6,
-        )
-
-        latency_widget = cloudwatch.GraphWidget(
-            title="Latency (ms) — all URLs",
-            left=latency_series,
-            legend_position=cloudwatch.LegendPosition.RIGHT,
-            period=Duration.minutes(1),
-            width=24,
-            height=6,
-        )
-
-        response_size_widget = cloudwatch.GraphWidget(
-            title="Response Size (bytes) — all URLs",
-            left=size_series,
-            legend_position=cloudwatch.LegendPosition.RIGHT,
-            period=Duration.minutes(1),
-            width=24,
-            height=6,
-        )
-
-        dashboard.add_widgets(availability_widget)
-        dashboard.add_widgets(latency_widget)
-        dashboard.add_widgets(response_size_widget)

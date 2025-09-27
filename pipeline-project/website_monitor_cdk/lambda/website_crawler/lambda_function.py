@@ -1,24 +1,20 @@
 import boto3
 import requests
 import time
-
-# Websites to check
-URLS = [
-    "https://vuws.westernsydney.edu.au/",
-    "https://westernsydney.edu.au/",
-    "https://library.westernsydney.edu.au/",
-]
-
-# Custom metrics namespace + names (must match CDK/constants)
-URL_NAMESPACE = "amiel-week3"
-URL_MONITOR_AVAILABILITY = "Availability"
-URL_MONITOR_LATENCY = "Latency"
-URL_MONITOR_RESPONSE_SIZE = "ResponseSize"
+import json
+import os
 
 def lambda_handler(event, context):
     cw = boto3.client("cloudwatch")
+    
+    # Get URLs from environment variable (set by CDK)
+    urls = json.loads(os.environ.get("URLS", "[]"))
+    namespace = os.environ.get("NAMESPACE", "amiel-week3")
+    availability_metric = os.environ.get("AVAILABILITY_METRIC_NAME", "Availability")
+    latency_metric = os.environ.get("LATENCY_METRIC_NAME", "Latency")
+    response_size_metric = os.environ.get("RESPONSE_SIZE_METRIC_NAME", "ResponseSize")
 
-    for url in URLS:
+    for url in urls:
         start = time.time()
         try:
             resp = requests.get(url, timeout=5)
@@ -31,24 +27,24 @@ def lambda_handler(event, context):
             size = 0
 
         cw.put_metric_data(
-            Namespace=URL_NAMESPACE,
+            Namespace=namespace,
             MetricData=[
                 {
-                    "MetricName": URL_MONITOR_AVAILABILITY,
+                    "MetricName": availability_metric,
                     "Dimensions": [{"Name": "URL", "Value": url}],
                     "Value": availability,
                 },
                 {
-                    "MetricName": URL_MONITOR_LATENCY,
+                    "MetricName": latency_metric,
                     "Dimensions": [{"Name": "URL", "Value": url}],
                     "Value": latency_ms,
                 },
                 {
-                    "MetricName": URL_MONITOR_RESPONSE_SIZE,
+                    "MetricName": response_size_metric,
                     "Dimensions": [{"Name": "URL", "Value": url}],
                     "Value": size,
                 },
             ],
         )
 
-    return {"statusCode": 200, "body": f"Checked {len(URLS)} URLs"}
+    return {"statusCode": 200, "body": f"Checked {len(urls)} URLs"}

@@ -5,11 +5,10 @@ LATENCY_METRIC_NAME = "Latency"
 RESPONSE_SIZE_METRIC_NAME = "ResponseSize"
 ALERT_EMAIL = "22070210@student.westernsydney.edu.au"
 
-# URLs to monitor (same list as in lambda_function.py)
+# URLs to monitor 
 URLS = [
     "https://vuws.westernsydney.edu.au/",
-    "https://westernsydney.edu.au/",
-    # "https://this-is-a-fake-url-test.com",
+    "https://westernsydney.edu.au/"
     "https://library.westernsydney.edu.au/",
 ]
 
