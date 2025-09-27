@@ -11,8 +11,8 @@ from constructs import Construct
 # Import the stage
 from AmielStage import AmielStage
 
-class PipelineProjectStack(Stack):
-    """CI/CD Pipeline for Website Monitoring Application"""
+class PipelineProjectStackV2(Stack):
+    """CI/CD Pipeline for Website Monitoring Application - Version 2"""
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)

@@ -11,8 +11,8 @@ from constructs import Construct
 # Import the stage
 from AmielStage import AmielStage
 
-class PipelineProjectStack(Stack):
-    """CI/CD Pipeline for Website Monitoring Application"""
+class PipelineProjectStackV2(Stack):
+    """CI/CD Pipeline for Website Monitoring Application - Version 2"""
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
@@ -34,6 +34,8 @@ class PipelineProjectStack(Stack):
                 "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3",
                 "echo 'Running tests...'",
+                "ls -la",
+                "ls -la pipeline-project/",
                 "python -m pytest pipeline-project/tests/ -v --tb=short",
                 "echo 'Tests completed successfully'",
                 "cd pipeline-project && cdk synth"
