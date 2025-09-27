@@ -2,7 +2,7 @@
 
 A comprehensive AWS-based website monitoring solution that continuously monitors website health and performance, providing real-time alerts and detailed analytics through CloudWatch dashboards.
 
-## 🚀 Features
+## Features
 
 ### Core Monitoring
 - **Automated Website Checks**: Monitors multiple websites every 5 minutes
@@ -28,7 +28,7 @@ A comprehensive AWS-based website monitoring solution that continuously monitors
 - **Multi-URL Support**: Monitor multiple websites simultaneously
 - **Historical Data**: 6-hour rolling window with 1-minute granularity
 
-## 🏗️ Architecture
+## Architecture
 
 The system consists of several AWS services working together in a serverless architecture:
 
@@ -98,14 +98,14 @@ The system consists of several AWS services working together in a serverless arc
 - **DynamoDB**: Alarm history storage
 - **IAM**: Service permissions and access control
 
-## 📊 Monitored Websites
+## Monitored Websites
 
 Currently monitoring:
 - `https://vuws.westernsydney.edu.au/`
 - `https://westernsydney.edu.au/`
 - `https://library.westernsydney.edu.au/`
 
-## ⚙️ Configuration
+## Configuration
 
 ### Alarm Thresholds
 - **Availability**: < 99% triggers alarm
@@ -117,7 +117,7 @@ Currently monitoring:
 - **Timeout**: 30 seconds per Lambda execution
 - **Retry**: Automatic on failures
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - AWS CLI configured with appropriate permissions
@@ -172,7 +172,7 @@ Access the dashboard at: CloudWatch → Dashboards → "URL-MONITOR-DASHBOARD"
 3. **Test URLs Manually**: Use curl or browser to verify site accessibility
 4. **Review Alarm History**: Check DynamoDB table for alarm state changes
 
-## 🔧 Customization
+## Customization
 
 ### Adding New URLs
 1. Edit `website_monitor_cdk/constants.py`
@@ -190,14 +190,14 @@ Access the dashboard at: CloudWatch → Dashboards → "URL-MONITOR-DASHBOARD"
 1. Update `ALERT_EMAIL` in `website_monitor_cdk/constants.py`
 2. Redeploy: `cdk deploy`
 
-## 📋 Requirements
+## Requirements
 
 - **Python**: 3.9+
 - **AWS CDK**: v2.x
 - **Dependencies**: See `requirements.txt`
 - **AWS Permissions**: CloudFormation, Lambda, CloudWatch, SNS, DynamoDB, IAM
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 website_monitor_cdk/
@@ -213,7 +213,7 @@ website_monitor_cdk/
 └── README.md                          # This file
 ```
 
-## 🔍 Operational Runbook
+## Operational Runbook
 
 For detailed operational procedures, see `RUNBOOK.md` which includes:
 - Alarm triage procedures
