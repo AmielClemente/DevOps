@@ -58,7 +58,7 @@ def test_1_unit_basic_functionality(mock_environment, mock_cloudwatch, mock_requ
     """
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
@@ -68,7 +68,7 @@ def test_1_unit_basic_functionality(mock_environment, mock_cloudwatch, mock_requ
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
                     "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk', 'lambda', 'website_crawler', 'lambda_function.py')
+                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
                 )
                 lambda_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(lambda_module)
@@ -91,7 +91,7 @@ def test_2_unit_error_handling(mock_environment, mock_cloudwatch):
     """
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
@@ -100,7 +100,7 @@ def test_2_unit_error_handling(mock_environment, mock_cloudwatch):
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
                     "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk', 'lambda', 'website_crawler', 'lambda_function.py')
+                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
                 )
                 lambda_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(lambda_module)
@@ -123,7 +123,7 @@ def test_3_unit_timeout_handling(mock_environment, mock_cloudwatch):
     """
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
@@ -132,7 +132,7 @@ def test_3_unit_timeout_handling(mock_environment, mock_cloudwatch):
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
                     "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk', 'lambda', 'website_crawler', 'lambda_function.py')
+                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
                 )
                 lambda_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(lambda_module)
@@ -154,7 +154,7 @@ def test_4_unit_cloudwatch_data_validation(mock_environment, mock_cloudwatch, mo
     """
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
@@ -163,7 +163,7 @@ def test_4_unit_cloudwatch_data_validation(mock_environment, mock_cloudwatch, mo
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
                     "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk', 'lambda', 'website_crawler', 'lambda_function.py')
+                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
                 )
                 lambda_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(lambda_module)
@@ -197,7 +197,7 @@ def test_5_unit_environment_variables(mock_environment, mock_cloudwatch, mock_re
     """
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
@@ -206,7 +206,7 @@ def test_5_unit_environment_variables(mock_environment, mock_cloudwatch, mock_re
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
                     "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk', 'lambda', 'website_crawler', 'lambda_function.py')
+                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
                 )
                 lambda_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(lambda_module)
@@ -230,7 +230,7 @@ def test_1_functional_end_to_end_flow(mock_environment, mock_cloudwatch):
     """
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
@@ -246,7 +246,7 @@ def test_1_functional_end_to_end_flow(mock_environment, mock_cloudwatch):
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
                     "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk', 'lambda', 'website_crawler', 'lambda_function.py')
+                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
                 )
                 lambda_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(lambda_module)
@@ -269,7 +269,7 @@ def test_2_functional_multi_website_monitoring(mock_environment, mock_cloudwatch
     """
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
@@ -300,7 +300,7 @@ def test_2_functional_multi_website_monitoring(mock_environment, mock_cloudwatch
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
                     "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk', 'lambda', 'website_crawler', 'lambda_function.py')
+                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
                 )
                 lambda_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(lambda_module)
@@ -323,7 +323,7 @@ def test_3_functional_performance_measurement(mock_environment, mock_cloudwatch)
     """
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
@@ -339,7 +339,7 @@ def test_3_functional_performance_measurement(mock_environment, mock_cloudwatch)
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
                     "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk', 'lambda', 'website_crawler', 'lambda_function.py')
+                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
                 )
                 lambda_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(lambda_module)
@@ -371,7 +371,7 @@ def test_4_functional_mixed_scenarios(mock_environment, mock_cloudwatch):
     """
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
@@ -404,7 +404,7 @@ def test_4_functional_mixed_scenarios(mock_environment, mock_cloudwatch):
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
                     "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk', 'lambda', 'website_crawler', 'lambda_function.py')
+                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
                 )
                 lambda_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(lambda_module)
@@ -427,7 +427,7 @@ def test_5_functional_complete_monitoring_cycle(mock_environment, mock_cloudwatc
     """
     import sys
     import os
-    sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk'))
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
@@ -445,7 +445,7 @@ def test_5_functional_complete_monitoring_cycle(mock_environment, mock_cloudwatc
                 import importlib.util
                 spec = importlib.util.spec_from_file_location(
                     "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'website_monitor_cdk', 'lambda', 'website_crawler', 'lambda_function.py')
+                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
                 )
                 lambda_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(lambda_module)
