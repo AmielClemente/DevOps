@@ -31,14 +31,20 @@ class PipelineProjectStackV2(Stack):
             input=source,
             commands=[
                 "npm install -g aws-cdk",
-                "pip install -r requirements.txt",
+                "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3",
-                "echo 'Running tests...'",
-                "python -m pytest tests/ -v --tb=short",
+                "echo '=== DEBUGGING DIRECTORY STRUCTURE ==='",
+                "ls -la",
+                "echo '=== PIPELINE-PROJECT DIRECTORY ==='",
+                "ls -la pipeline-project/",
+                "echo '=== TESTS DIRECTORY ==='",
+                "ls -la pipeline-project/tests/",
+                "echo '=== RUNNING TESTS ==='",
+                "python -m pytest pipeline-project/tests/ -v --tb=short",
                 "echo 'Tests completed successfully'",
-                "cdk synth"
+                "cd pipeline-project && cdk synth"
             ],
-            primary_output_directory = "cdk.out"
+            primary_output_directory = "pipeline-project/cdk.out"
         )
 
         # Create pipeline

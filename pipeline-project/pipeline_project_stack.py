@@ -33,9 +33,13 @@ class PipelineProjectStackV2(Stack):
                 "npm install -g aws-cdk",
                 "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3",
-                "echo 'Running tests...'",
+                "echo '=== DEBUGGING DIRECTORY STRUCTURE ==='",
                 "ls -la",
+                "echo '=== PIPELINE-PROJECT DIRECTORY ==='",
                 "ls -la pipeline-project/",
+                "echo '=== TESTS DIRECTORY ==='",
+                "ls -la pipeline-project/tests/",
+                "echo '=== RUNNING TESTS ==='",
                 "python -m pytest pipeline-project/tests/ -v --tb=short",
                 "echo 'Tests completed successfully'",
                 "cd pipeline-project && cdk synth"
@@ -45,7 +49,7 @@ class PipelineProjectStackV2(Stack):
 
         # Create pipeline
         pipeline = pipelines.CodePipeline(
-            self, "AmielPipeline",
+            self, "AmielPipelineV2",
             synth=synth
         )
 
