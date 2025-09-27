@@ -31,13 +31,12 @@ class PipelineProjectStack(Stack):
             input=source,
             commands=[
                 "npm install -g aws-cdk",
-                "cd pipeline-project",
-                "pip install -r requirements.txt",
+                "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3",
                 "echo 'Running tests...'",
-                "python -m pytest tests/ -v --tb=short",
+                "python -m pytest pipeline-project/tests/ -v --tb=short",
                 "echo 'Tests completed successfully'",
-                "cdk synth"
+                "cd pipeline-project && cdk synth"
             ],
             primary_output_directory = "pipeline-project/cdk.out"
         )
@@ -53,9 +52,8 @@ class PipelineProjectStack(Stack):
             "UnitTests",
             commands=[
                 "echo 'Running unit tests...'",
-                "cd pipeline-project",
                 "pip install pytest boto3",
-                "python -m pytest tests/test_simple.py::test_1_unit_basic_functionality tests/test_simple.py::test_2_unit_error_handling tests/test_simple.py::test_3_unit_timeout_handling tests/test_simple.py::test_4_unit_cloudwatch_data_validation tests/test_simple.py::test_5_unit_environment_variables -v --tb=short",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_1_unit_basic_functionality pipeline-project/tests/test_simple.py::test_2_unit_error_handling pipeline-project/tests/test_simple.py::test_3_unit_timeout_handling pipeline-project/tests/test_simple.py::test_4_unit_cloudwatch_data_validation pipeline-project/tests/test_simple.py::test_5_unit_environment_variables -v --tb=short",
                 "echo 'Unit tests passed!'"
             ]
         )
@@ -65,9 +63,8 @@ class PipelineProjectStack(Stack):
             "FunctionalTests",
             commands=[
                 "echo 'Running functional tests...'",
-                "cd pipeline-project",
                 "pip install pytest boto3",
-                "python -m pytest tests/test_simple.py::test_1_functional_end_to_end_flow tests/test_simple.py::test_2_functional_multi_website_monitoring tests/test_simple.py::test_3_functional_performance_measurement tests/test_simple.py::test_4_functional_mixed_scenarios tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v --tb=short",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_1_functional_end_to_end_flow pipeline-project/tests/test_simple.py::test_2_functional_multi_website_monitoring pipeline-project/tests/test_simple.py::test_3_functional_performance_measurement pipeline-project/tests/test_simple.py::test_4_functional_mixed_scenarios pipeline-project/tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v --tb=short",
                 "echo 'Functional tests passed!'"
             ]
         )
