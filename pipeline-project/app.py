@@ -3,7 +3,7 @@ import os
 
 import aws_cdk as cdk
 
-from pipeline_project.pipeline_project_stack import PipelineProjectStackV2
+from pipeline_project_stack import PipelineProjectStackV2
 
 
 app = cdk.App()
