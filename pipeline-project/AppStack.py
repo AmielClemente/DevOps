@@ -111,7 +111,7 @@ class AppStack(Stack):
         dashboard = cloudwatch.Dashboard(
             self,
             "Dashboard",
-            dashboard_name="URL-MONITOR-DASHBOARD",
+            dashboard_name=f"URL-MONITOR-DASHBOARD-{self.stack_name}",
             start="-PT6H",
         )
 
