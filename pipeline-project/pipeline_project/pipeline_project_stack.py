@@ -53,25 +53,14 @@ class PipelineProjectStackV2(Stack):
             synth=synth
         )
 
-        # Unit Tests Stage
-        unit_test = ShellStep(
-            "UnitTests",
+        # Simplified test stage - just run all tests together
+        test_stage = ShellStep(
+            "AllTests",
             commands=[
-                "echo 'Running unit tests...'",
+                "echo 'Running all tests...'",
                 "pip install pytest boto3",
-                "python -m pytest tests/test_website_monitor.py -v --tb=short",
-                "echo 'Unit tests passed!'"
-            ]
-        )
-
-        # Functional Tests Stage  
-        functional_test = ShellStep(
-            "FunctionalTests",
-            commands=[
-                "echo 'Running functional tests...'",
-                "pip install pytest boto3",
-                "python -m pytest tests/test_web_crawler_comprehensive.py -v --tb=short",
-                "echo 'Functional tests passed!'"
+                "python -m pytest pipeline-project/tests/ -v --tb=short",
+                "echo 'All tests passed!'"
             ]
         )
 
@@ -83,4 +72,4 @@ class PipelineProjectStackV2(Stack):
             )
         )
         
-        pipeline.add_stage(alpha, pre=[unit_test, functional_test])
+        pipeline.add_stage(alpha, pre=[test_stage])

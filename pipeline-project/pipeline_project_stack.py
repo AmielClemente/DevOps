@@ -53,25 +53,14 @@ class PipelineProjectStackV2(Stack):
             synth=synth
         )
 
-        # Unit Tests Stage
-        unit_test = ShellStep(
-            "UnitTests",
+        # Simplified test stage - just run all tests together
+        test_stage = ShellStep(
+            "AllTests",
             commands=[
-                "echo 'Running unit tests...'",
+                "echo 'Running all tests...'",
                 "pip install pytest boto3",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_1_unit_basic_functionality pipeline-project/tests/test_simple.py::test_2_unit_error_handling pipeline-project/tests/test_simple.py::test_3_unit_timeout_handling pipeline-project/tests/test_simple.py::test_4_unit_cloudwatch_data_validation pipeline-project/tests/test_simple.py::test_5_unit_environment_variables -v --tb=short",
-                "echo 'Unit tests passed!'"
-            ]
-        )
-
-        # Functional Tests Stage  
-        functional_test = ShellStep(
-            "FunctionalTests",
-            commands=[
-                "echo 'Running functional tests...'",
-                "pip install pytest boto3",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_1_functional_end_to_end_flow pipeline-project/tests/test_simple.py::test_2_functional_multi_website_monitoring pipeline-project/tests/test_simple.py::test_3_functional_performance_measurement pipeline-project/tests/test_simple.py::test_4_functional_mixed_scenarios pipeline-project/tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v --tb=short",
-                "echo 'Functional tests passed!'"
+                "python -m pytest pipeline-project/tests/ -v --tb=short",
+                "echo 'All tests passed!'"
             ]
         )
 
@@ -100,6 +89,6 @@ class PipelineProjectStackV2(Stack):
         )
         
         # Add stages to pipeline with test blockers
-        pipeline.add_stage(beta, pre=[unit_test, functional_test])
-        pipeline.add_stage(gamma, pre=[unit_test, functional_test])
-        pipeline.add_stage(prod, pre=[unit_test, functional_test])
+        pipeline.add_stage(beta, pre=[test_stage])
+        pipeline.add_stage(gamma, pre=[test_stage])
+        pipeline.add_stage(prod, pre=[test_stage])
