@@ -65,7 +65,15 @@ class PipelineProjectStackV2(Stack):
             ]
         )
 
-        # Beta stage
+        # Alpha stage (Development)
+        alpha = AmielStage(self, 'alpha', 
+            env=Environment(
+                account=self.account,
+                region=self.region
+            )
+        )
+        
+        # Beta stage (Staging)
         beta = AmielStage(self, 'beta', 
             env=Environment(
                 account=self.account,
@@ -73,7 +81,7 @@ class PipelineProjectStackV2(Stack):
             )
         )
         
-        # Gamma stage
+        # Gamma stage (Pre-Production)
         gamma = AmielStage(self, 'gamma', 
             env=Environment(
                 account=self.account,
@@ -81,7 +89,7 @@ class PipelineProjectStackV2(Stack):
             )
         )
         
-        # Production stage
+        # Production stage (Live)
         prod = AmielStage(self, 'prod', 
             env=Environment(
                 account=self.account,
@@ -90,6 +98,7 @@ class PipelineProjectStackV2(Stack):
         )
         
         # Add stages to pipeline with test blockers
+        pipeline.add_stage(alpha, pre=[test_stage])
         pipeline.add_stage(beta, pre=[test_stage])
         pipeline.add_stage(gamma, pre=[test_stage])
         pipeline.add_stage(prod, pre=[test_stage])
