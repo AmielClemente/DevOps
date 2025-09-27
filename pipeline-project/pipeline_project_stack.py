@@ -58,7 +58,8 @@ class PipelineProjectStackV2(Stack):
             "AllTests",
             commands=[
                 "echo 'Running all tests...'",
-                "pip install pytest boto3",
+                "pip install -r pipeline-project/requirements.txt",
+                "pip install pytest boto3 requests",
                 "python -m pytest pipeline-project/tests/ -v --tb=short",
                 "echo 'All tests passed!'"
             ]
