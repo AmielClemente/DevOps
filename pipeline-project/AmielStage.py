@@ -3,8 +3,8 @@ AmielStage.py - Stage that combines AppStack and DatabaseStack
 """
 from aws_cdk import Stage
 from constructs import Construct
-from .AppStack import AppStack
-from .DatabaseStack import DatabaseStack
+from AppStack import AppStack
+from DatabaseStack import DatabaseStack
 
 class AmielStage(Stage):
     """

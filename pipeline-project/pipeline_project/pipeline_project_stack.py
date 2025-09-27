@@ -31,7 +31,6 @@ class PipelineProjectStack(Stack):
             input=source,
             commands=[
                 "npm install -g aws-cdk",
-                "cd pipeline-project",
                 "pip install -r requirements.txt",
                 "pip install pytest boto3",
                 "echo 'Running tests...'",
@@ -39,7 +38,7 @@ class PipelineProjectStack(Stack):
                 "echo 'Tests completed successfully'",
                 "cdk synth"
             ],
-            primary_output_directory = "pipeline-project/cdk.out"
+            primary_output_directory = "cdk.out"
         )
 
         # Create pipeline
@@ -53,9 +52,8 @@ class PipelineProjectStack(Stack):
             "UnitTests",
             commands=[
                 "echo 'Running unit tests...'",
-                "cd pipeline-project",
                 "pip install pytest boto3",
-                "python -m pytest tests/test_simple.py::test_1_unit_basic_functionality tests/test_simple.py::test_2_unit_error_handling tests/test_simple.py::test_3_unit_timeout_handling tests/test_simple.py::test_4_unit_cloudwatch_data_validation tests/test_simple.py::test_5_unit_environment_variables -v --tb=short",
+                "python -m pytest tests/test_website_monitor.py -v --tb=short",
                 "echo 'Unit tests passed!'"
             ]
         )
@@ -65,38 +63,18 @@ class PipelineProjectStack(Stack):
             "FunctionalTests",
             commands=[
                 "echo 'Running functional tests...'",
-                "cd pipeline-project",
                 "pip install pytest boto3",
-                "python -m pytest tests/test_simple.py::test_1_functional_end_to_end_flow tests/test_simple.py::test_2_functional_multi_website_monitoring tests/test_simple.py::test_3_functional_performance_measurement tests/test_simple.py::test_4_functional_mixed_scenarios tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v --tb=short",
+                "python -m pytest tests/test_web_crawler_comprehensive.py -v --tb=short",
                 "echo 'Functional tests passed!'"
             ]
         )
 
-        # Beta stage
-        beta = AmielStage(self, 'beta', 
+        # Alpha stage
+        alpha = AmielStage(self, 'alpha', 
             env=Environment(
                 account=self.account,
                 region=self.region
             )
         )
         
-        # Gamma stage
-        gamma = AmielStage(self, 'gamma', 
-            env=Environment(
-                account=self.account,
-                region=self.region
-            )
-        )
-        
-        # Production stage
-        prod = AmielStage(self, 'prod', 
-            env=Environment(
-                account=self.account,
-                region=self.region
-            )
-        )
-        
-        # Add stages to pipeline with test blockers
-        pipeline.add_stage(beta, pre=[unit_test, functional_test])
-        pipeline.add_stage(gamma, pre=[unit_test, functional_test])
-        pipeline.add_stage(prod, pre=[unit_test, functional_test])
+        pipeline.add_stage(alpha, pre=[unit_test, functional_test])
