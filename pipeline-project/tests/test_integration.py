@@ -103,7 +103,7 @@ def test_2_integration_lambda_deployment(lambda_client, integration_stack):
     assert len([f for f in deployed_functions if 'WebsiteCrawler' in f]) >= 0
     assert len([f for f in deployed_functions if 'AlarmLogger' in f]) >= 0
     
-    print("✅ Lambda deployment validation successful")
+    print("Lambda deployment validation successful")
 
 def test_3_integration_test_actual_lambda_invocation(lambda_client):
     """
@@ -140,9 +140,9 @@ def test_3_integration_test_actual_lambda_invocation(lambda_client):
         assert 'statusCode' in payload
         assert payload['statusCode'] == 200
         
-        print("✅ Real Lambda invocation successful")
+        print("Real Lambda invocation successful")
     else:
-        print("⚠️  No Lambda function found for testing")
+        print("No Lambda function found for testing")
 
 def test_4_integration_cloudwatch_metrics_creation(cloudwatch_client, lambda_client):
     """
@@ -193,7 +193,7 @@ def test_4_integration_cloudwatch_metrics_creation(cloudwatch_client, lambda_cli
         except cloudwatch_client.exceptions.ResourceNotFoundException:
             print("⚠️  No metrics found in CloudWatch namespace")
     else:
-        print("⚠️  No Lambda function found for testing")
+        print("No Lambda function found for testing")
 
 def test_5_integration_dynamodb_table_access(dynamodb_client, integration_stack):
     """
@@ -253,7 +253,7 @@ def test_5_integration_dynamodb_table_access(dynamodb_client, integration_stack)
         
         print("✅ DynamoDB integration test successful")
         
-        except dynamodb_client.exceptions.ResourceNotFoundException:
+    except dynamodb_client.exceptions.ResourceNotFoundException:
         print(f"⚠️  DynamoDB table '{table_name}' not found")
 
 def test_6_integration_sns_notification_system(sns_client, lambda_client):
