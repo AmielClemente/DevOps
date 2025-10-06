@@ -31,13 +31,14 @@ class PipelineProjectStackV2(Stack):
             input=source,
             commands=[
                 "npm install -g aws-cdk",
+                "cd pipeline-project",
                 "pip install -r requirements.txt",
                 "echo '=== DEBUGGING DIRECTORY STRUCTURE ==='",
                 "ls -la",
                 "echo '=== BUILDING CDK STACK ==='",
                 "cdk synth"
             ],
-            primary_output_directory = "cdk.out"
+            primary_output_directory = "pipeline-project/cdk.out"
         )
 
         # Create pipeline
@@ -51,6 +52,7 @@ class PipelineProjectStackV2(Stack):
             "UnitTests",
             commands=[
                 "echo 'Running Unit Tests...'",
+                "cd pipeline-project",
                 "pip install -r requirements.txt",
                 "pip install pytest boto3 requests",
                 "echo '=== Running Lambda Function Unit Tests ==='",
@@ -68,6 +70,7 @@ class PipelineProjectStackV2(Stack):
             "FunctionalTests",
             commands=[
                 "echo 'Running Functional Tests...'",
+                "cd pipeline-project",
                 "pip install -r requirements.txt",
                 "pip install pytest boto3 requests",
                 "echo '=== Running Lambda Function Functional Tests ==='",
@@ -85,6 +88,7 @@ class PipelineProjectStackV2(Stack):
             "InfrastructureTests",
             commands=[
                 "echo 'Running Infrastructure Tests...'",
+                "cd pipeline-project",
                 "pip install -r requirements.txt",
                 "pip install pytest boto3",
                 "echo '=== Running CDK Infrastructure Tests ==='",
@@ -98,6 +102,7 @@ class PipelineProjectStackV2(Stack):
             "RealIntegrationTests",
             commands=[
                 "echo 'Running Real Integration Tests...'",
+                "cd pipeline-project",
                 "pip install -r requirements.txt",
                 "pip install pytest boto3",
                 "echo '=== Running Real AWS Integration Tests ==='",
