@@ -109,8 +109,8 @@ class PipelineProjectStackV2(Stack):
             ]
         )
 
-        # Alpha stage (Development)
-        alpha = AmielStage(self, 'alpha', 
+        # Alpha stage (Development) - Using new name to avoid stuck stack
+        alpha = AmielStage(self, 'alpha-v2', 
             env=Environment(
                 account=self.account,
                 region=self.region
@@ -145,8 +145,8 @@ class PipelineProjectStackV2(Stack):
         prod_approval = ManualApprovalStep("ProdApproval", comment="Approve deployment to Production (Live) environment")
         
         # Add stages to pipeline with appropriate test blockers
-        # Alpha (Development) - Unit Tests only - TEMPORARILY DISABLED due to CodeDeploy issue
-        # pipeline.add_stage(alpha, pre=[unit_tests])
+        # Alpha (Development) - Unit Tests only - REENABLED with new stack name
+        pipeline.add_stage(alpha, pre=[unit_tests])
         
         # Beta (Staging) - Functional Tests only
         pipeline.add_stage(beta, pre=[functional_tests])
