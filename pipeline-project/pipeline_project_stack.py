@@ -12,36 +12,31 @@ from constructs import Construct
 from AmielStage import AmielStage
 
 class PipelineProjectStackV2(Stack):
-    """CI/CD Pipeline for Website Monitoring Application - Version 2"""
+
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # GitHub source
         source = CodePipelineSource.git_hub(
-            repo_string="AmielClemente/DevOps",  # Replace with your repo
+            repo_string="AmielClemente/DevOps",  
             branch="main",
             action_name="DevOps",
-            authentication=SecretValue.secrets_manager("DevOps")  # Your secret name
+            authentication=SecretValue.secrets_manager("DevOps") 
         )
 
-        # Build commands with testing
+        # Build commands - only build/synth, no tests
         synth = ShellStep(
             "BuildCommands",
             input=source,
             commands=[
                 "npm install -g aws-cdk",
                 "pip install -r pipeline-project/requirements.txt",
-                "pip install pytest boto3",
                 "echo '=== DEBUGGING DIRECTORY STRUCTURE ==='",
                 "ls -la",
                 "echo '=== PIPELINE-PROJECT DIRECTORY ==='",
                 "ls -la pipeline-project/",
-                "echo '=== TESTS DIRECTORY ==='",
-                "ls -la pipeline-project/tests/",
-                "echo '=== RUNNING TESTS ==='",
-                "python -m pytest pipeline-project/tests/ -v --tb=short",
-                "echo 'Tests completed successfully'",
+                "echo '=== BUILDING CDK STACK ==='",
                 "cd pipeline-project && cdk synth"
             ],
             primary_output_directory = "pipeline-project/cdk.out"
@@ -53,15 +48,63 @@ class PipelineProjectStackV2(Stack):
             synth=synth
         )
 
-        # Simplified test stage - just run all tests together
-        test_stage = ShellStep(
-            "AllTests",
+        # Unit Tests - Test individual components in isolation
+        unit_tests = ShellStep(
+            "UnitTests",
             commands=[
-                "echo 'Running all tests...'",
+                "echo 'Running Unit Tests...'",
                 "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3 requests",
-                "python -m pytest pipeline-project/tests/ -v --tb=short",
-                "echo 'All tests passed!'"
+                "echo '=== Running Lambda Function Unit Tests ==='",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_1_unit_basic_functionality -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_2_unit_error_handling -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_3_unit_timeout_handling -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_4_unit_cloudwatch_data_validation -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_5_unit_environment_variables -v",
+                "echo 'Unit tests completed successfully'"
+            ]
+        )
+
+        # Functional Tests - Test complete workflows end-to-end
+        functional_tests = ShellStep(
+            "FunctionalTests",
+            commands=[
+                "echo 'Running Functional Tests...'",
+                "pip install -r pipeline-project/requirements.txt",
+                "pip install pytest boto3 requests",
+                "echo '=== Running Lambda Function Functional Tests ==='",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_1_functional_end_to_end_flow -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_2_functional_multi_website_monitoring -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_3_functional_performance_measurement -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_4_functional_mixed_scenarios -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v",
+                "echo 'Functional tests completed successfully'"
+            ]
+        )
+
+        # Infrastructure Tests - Test CDK infrastructure creation
+        infrastructure_tests = ShellStep(
+            "InfrastructureTests",
+            commands=[
+                "echo 'Running Infrastructure Tests...'",
+                "pip install -r pipeline-project/requirements.txt",
+                "pip install pytest boto3",
+                "echo '=== Running CDK Infrastructure Tests ==='",
+                "python -m pytest pipeline-project/tests/teste_website.py -v",
+                "echo 'Infrastructure tests completed successfully'"
+            ]
+        )
+
+        # Real Integration Tests - Test actual AWS service interactions
+        real_integration_tests = ShellStep(
+            "RealIntegrationTests",
+            commands=[
+                "echo 'Running Real Integration Tests...'",
+                "pip install -r pipeline-project/requirements.txt",
+                "pip install pytest boto3",
+                "echo '=== Running Real AWS Integration Tests ==='",
+                "python -m pytest pipeline-project/tests/test_integration.py -v",
+                "echo 'Real integration tests completed successfully'"
             ]
         )
 
@@ -97,8 +140,15 @@ class PipelineProjectStackV2(Stack):
             )
         )
         
-        # Add stages to pipeline with test blockers
-        pipeline.add_stage(alpha, pre=[test_stage])
-        pipeline.add_stage(beta, pre=[test_stage])
-        pipeline.add_stage(gamma, pre=[test_stage])
-        pipeline.add_stage(prod, pre=[test_stage])
+        # Add stages to pipeline with appropriate test blockers
+        # Alpha (Development) - Unit Tests only
+        pipeline.add_stage(alpha, pre=[unit_tests])
+        
+        # Beta (Staging) - Functional Tests only
+        pipeline.add_stage(beta, pre=[functional_tests])
+        
+        # Gamma (Pre-Production) - Integration Tests only
+        pipeline.add_stage(gamma, pre=[real_integration_tests])
+        
+        # Production (Live) - Infrastructure Tests only
+        pipeline.add_stage(prod, pre=[infrastructure_tests])
