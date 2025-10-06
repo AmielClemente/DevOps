@@ -12,7 +12,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_sns as sns,
     aws_sns_subscriptions as subs,
-    aws_codedeploy as codedeploy,
+    # aws_codedeploy as codedeploy,  # DISABLED - requires subscription
     aws_dynamodb as dynamodb,
     aws_apigateway as apigateway,
 )
@@ -369,16 +369,17 @@ class AppStack(Stack):
         error_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
         memory_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
         
-        # Create CodeDeploy Lambda deployment group with canary configuration
-        deployment_group = codedeploy.LambdaDeploymentGroup(
-            self,
-            "BlueGreenDeployment",
-            alias=alias,
-            deployment_config=codedeploy.LambdaDeploymentConfig.CANARY_10_PERCENT_5_MINUTES,
-            alarms=[invocations_alarm, duration_alarm, error_alarm, memory_alarm]
-        )
+        # CodeDeploy Lambda deployment group - DISABLED due to subscription requirement
+        # deployment_group = codedeploy.LambdaDeploymentGroup(
+        #     self,
+        #     "BlueGreenDeployment",
+        #     alias=alias,
+        #     deployment_config=codedeploy.LambdaDeploymentConfig.CANARY_10_PERCENT_5_MINUTES,
+        #     alarms=[invocations_alarm, duration_alarm, error_alarm, memory_alarm]
+        # )
         
-        return deployment_group
+        # return deployment_group
+        return None
 
     def create_alarm_table(self):
         """Create DynamoDB table for alarm logging"""
