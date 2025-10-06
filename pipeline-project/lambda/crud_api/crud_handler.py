@@ -7,11 +7,22 @@ import boto3
 import uuid
 import os
 from datetime import datetime
+from decimal import Decimal
 from botocore.exceptions import ClientError
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
 table_name = None
+
+def convert_decimals(obj):
+    """Convert Decimal objects to int/float for JSON serialization"""
+    if isinstance(obj, Decimal):
+        return int(obj) if obj % 1 == 0 else float(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_decimals(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_decimals(item) for item in obj]
+    return obj
 
 def lambda_handler(event, context):
     """
@@ -144,7 +155,7 @@ def get_website(table, website_id):
         
         return {
             'statusCode': 200,
-            'body': json.dumps({'website': response['Item']})
+            'body': json.dumps({'website': convert_decimals(response['Item'])})
         }
     except ClientError as e:
         return {
@@ -162,7 +173,7 @@ def list_websites(table):
         return {
             'statusCode': 200,
             'body': json.dumps({
-                'websites': websites,
+                'websites': convert_decimals(websites),
                 'count': len(websites)
             })
         }
@@ -184,25 +195,35 @@ def update_website(table, website_id, data):
                 'body': json.dumps({'error': 'Website not found'})
             }
         
-        # Prepare update expression
+        # Prepare update expression with attribute names for reserved keywords
         update_expression = "SET updated_at = :updated_at"
         expression_values = {':updated_at': datetime.utcnow().isoformat()}
+        expression_names = {}
         
         # Add fields to update
         allowed_fields = ['url', 'name', 'description', 'enabled', 'check_interval', 'timeout', 'expected_status']
         
         for field in allowed_fields:
             if field in data:
-                update_expression += f", {field} = :{field}"
+                # Use attribute names for reserved keywords
+                attr_name = f"#{field}" if field in ['name'] else field
+                if field in ['name']:
+                    expression_names[attr_name] = field
+                update_expression += f", {attr_name} = :{field}"
                 expression_values[f':{field}'] = data[field]
         
         # Perform update
-        table.update_item(
-            Key={'id': website_id},
-            UpdateExpression=update_expression,
-            ExpressionAttributeValues=expression_values,
-            ReturnValues='ALL_NEW'
-        )
+        update_params = {
+            'Key': {'id': website_id},
+            'UpdateExpression': update_expression,
+            'ExpressionAttributeValues': expression_values,
+            'ReturnValues': 'ALL_NEW'
+        }
+        
+        if expression_names:
+            update_params['ExpressionAttributeNames'] = expression_names
+            
+        table.update_item(**update_params)
         
         # Get updated item
         updated_response = table.get_item(Key={'id': website_id})
@@ -211,7 +232,7 @@ def update_website(table, website_id, data):
             'statusCode': 200,
             'body': json.dumps({
                 'message': 'Website updated successfully',
-                'website': updated_response['Item']
+                'website': convert_decimals(updated_response['Item'])
             })
         }
     except ClientError as e:
