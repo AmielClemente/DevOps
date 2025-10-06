@@ -1,6 +1,6 @@
-# 🚀 Website Monitoring CI/CD Pipeline
+# 🚀 Website Monitoring CI/CD Pipeline with CRUD API
 
-A comprehensive CI/CD pipeline built with AWS CodePipeline and CDK that automatically builds, tests, and deploys the Website Monitoring Application across multiple environments.
+A comprehensive CI/CD pipeline built with AWS CodePipeline and CDK that automatically builds, tests, and deploys the Website Monitoring Application with a public CRUD API for managing target websites across multiple environments.
 
 ## 🏗️ Architecture
 
@@ -29,6 +29,21 @@ A comprehensive CI/CD pipeline built with AWS CodePipeline and CDK that automati
                                               └─────────────────┘
 ```
 
+## 🌐 Application Components
+
+### **Website Monitoring System**
+- **Lambda Functions**: Website crawler and alarm logger
+- **DynamoDB Tables**: Alarm logging and target websites storage
+- **CloudWatch**: Monitoring, alarms, and dashboards
+- **SNS**: Alert notifications
+- **CodeDeploy**: Blue-green deployments
+
+### **CRUD API System** 🆕
+- **API Gateway**: RESTful endpoints for website management
+- **CRUD Lambda**: Handles Create, Read, Update, Delete operations
+- **DynamoDB**: Stores target websites configuration
+- **CORS Support**: Cross-origin resource sharing enabled
+
 ## 🎯 Pipeline Stages
 
 ### **1. Source Stage**
@@ -46,9 +61,10 @@ A comprehensive CI/CD pipeline built with AWS CodePipeline and CDK that automati
 - **Output**: Built application artifacts
 
 ### **3. Deploy Stages**
-- **Beta**: Development/testing environment
-- **Gamma**: Staging environment (pre-production)
-- **Production**: Live environment
+- **Alpha**: Development/testing environment (Unit Tests + Manual Approval)
+- **Beta**: Staging environment (Functional Tests + Manual Approval)
+- **Gamma**: Pre-production environment (Integration Tests + Manual Approval)
+- **Production**: Live environment (Infrastructure Tests + Manual Approval) 🔒
 
 ## 🔧 Prerequisites
 
@@ -113,20 +129,65 @@ cdk deploy
 ### **Run Tests Locally**
 ```bash
 # Install test dependencies
-pip install pytest boto3
+pip install pytest boto3 moto
 
 # Run all tests
 python -m pytest tests/ -v
 
 # Run specific test
 python -m pytest tests/test_website_monitor.py::test_lambda_handler -v
+
+# Run CRUD API tests
+python -m pytest tests/test_crud_api.py -v
 ```
 
 ### **Test Coverage**
-- Lambda function unit tests
-- CDK stack creation tests
-- Integration tests with AWS services
-- Error handling and edge cases
+- **Unit Tests**: Lambda function unit tests
+- **Functional Tests**: End-to-end workflow testing
+- **Integration Tests**: AWS service integration
+- **CRUD API Tests**: Create, Read, Update, Delete operations 🆕
+- **DynamoDB Performance Tests**: Read/write time validation 🆕
+- **Error Handling**: Edge cases and failure scenarios
+
+## 🌐 CRUD API Usage
+
+### **API Endpoints**
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/websites` | List all target websites |
+| GET | `/websites/{id}` | Get specific website |
+| POST | `/websites` | Create new website |
+| PUT | `/websites/{id}` | Update website |
+| DELETE | `/websites/{id}` | Delete website |
+
+### **Quick Start Examples**
+
+```bash
+# List all websites
+curl -X GET https://your-api-gateway-url/websites
+
+# Create a new website
+curl -X POST https://your-api-gateway-url/websites \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com",
+    "name": "Example Website",
+    "description": "A sample website",
+    "enabled": true
+  }'
+
+# Update a website
+curl -X PUT https://your-api-gateway-url/websites/{id} \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": false}'
+
+# Delete a website
+curl -X DELETE https://your-api-gateway-url/websites/{id}
+```
+
+### **API Documentation**
+📖 [Complete API Documentation](API_DOCUMENTATION.md)
 
 ## 📊 Monitoring & Observability
 
