@@ -5,6 +5,7 @@ Handles Create, Read, Update, Delete operations for target websites
 import json
 import boto3
 import uuid
+import os
 from datetime import datetime
 from botocore.exceptions import ClientError
 
@@ -18,7 +19,7 @@ def lambda_handler(event, context):
     """
     global table_name
     if not table_name:
-        table_name = context.environment.get('TARGET_TABLE')
+        table_name = os.environ.get('TARGET_TABLE')
     
     if not table_name:
         return {
