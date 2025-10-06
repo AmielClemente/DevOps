@@ -145,8 +145,8 @@ class PipelineProjectStackV2(Stack):
         prod_approval = ManualApprovalStep("ProdApproval", comment="Approve deployment to Production (Live) environment")
         
         # Add stages to pipeline with appropriate test blockers
-        # Alpha (Development) - Unit Tests only
-        pipeline.add_stage(alpha, pre=[unit_tests])
+        # Alpha (Development) - Unit Tests only - TEMPORARILY DISABLED due to CodeDeploy issue
+        # pipeline.add_stage(alpha, pre=[unit_tests])
         
         # Beta (Staging) - Functional Tests only
         pipeline.add_stage(beta, pre=[functional_tests])
