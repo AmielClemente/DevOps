@@ -31,15 +31,13 @@ class PipelineProjectStackV2(Stack):
             input=source,
             commands=[
                 "npm install -g aws-cdk",
-                "pip install -r pipeline-project/requirements.txt",
+                "pip install -r requirements.txt",
                 "echo '=== DEBUGGING DIRECTORY STRUCTURE ==='",
                 "ls -la",
-                "echo '=== PIPELINE-PROJECT DIRECTORY ==='",
-                "ls -la pipeline-project/",
                 "echo '=== BUILDING CDK STACK ==='",
-                "cd pipeline-project && cdk synth"
+                "cdk synth"
             ],
-            primary_output_directory = "pipeline-project/cdk.out"
+            primary_output_directory = "cdk.out"
         )
 
         # Create pipeline
@@ -53,14 +51,14 @@ class PipelineProjectStackV2(Stack):
             "UnitTests",
             commands=[
                 "echo 'Running Unit Tests...'",
-                "pip install -r pipeline-project/requirements.txt",
+                "pip install -r requirements.txt",
                 "pip install pytest boto3 requests",
                 "echo '=== Running Lambda Function Unit Tests ==='",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_1_unit_basic_functionality -v",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_2_unit_error_handling -v",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_3_unit_timeout_handling -v",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_4_unit_cloudwatch_data_validation -v",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_5_unit_environment_variables -v",
+                "python -m pytest tests/test_simple.py::test_1_unit_basic_functionality -v",
+                "python -m pytest tests/test_simple.py::test_2_unit_error_handling -v",
+                "python -m pytest tests/test_simple.py::test_3_unit_timeout_handling -v",
+                "python -m pytest tests/test_simple.py::test_4_unit_cloudwatch_data_validation -v",
+                "python -m pytest tests/test_simple.py::test_5_unit_environment_variables -v",
                 "echo 'Unit tests completed successfully'"
             ]
         )
@@ -70,14 +68,14 @@ class PipelineProjectStackV2(Stack):
             "FunctionalTests",
             commands=[
                 "echo 'Running Functional Tests...'",
-                "pip install -r pipeline-project/requirements.txt",
+                "pip install -r requirements.txt",
                 "pip install pytest boto3 requests",
                 "echo '=== Running Lambda Function Functional Tests ==='",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_1_functional_end_to_end_flow -v",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_2_functional_multi_website_monitoring -v",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_3_functional_performance_measurement -v",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_4_functional_mixed_scenarios -v",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v",
+                "python -m pytest tests/test_simple.py::test_1_functional_end_to_end_flow -v",
+                "python -m pytest tests/test_simple.py::test_2_functional_multi_website_monitoring -v",
+                "python -m pytest tests/test_simple.py::test_3_functional_performance_measurement -v",
+                "python -m pytest tests/test_simple.py::test_4_functional_mixed_scenarios -v",
+                "python -m pytest tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v",
                 "echo 'Functional tests completed successfully'"
             ]
         )
@@ -87,10 +85,10 @@ class PipelineProjectStackV2(Stack):
             "InfrastructureTests",
             commands=[
                 "echo 'Running Infrastructure Tests...'",
-                "pip install -r pipeline-project/requirements.txt",
+                "pip install -r requirements.txt",
                 "pip install pytest boto3",
                 "echo '=== Running CDK Infrastructure Tests ==='",
-                "python -m pytest pipeline-project/tests/teste_website.py -v",
+                "python -m pytest tests/teste_website.py -v",
                 "echo 'Infrastructure tests completed successfully'"
             ]
         )
@@ -100,10 +98,10 @@ class PipelineProjectStackV2(Stack):
             "RealIntegrationTests",
             commands=[
                 "echo 'Running Real Integration Tests...'",
-                "pip install -r pipeline-project/requirements.txt",
+                "pip install -r requirements.txt",
                 "pip install pytest boto3",
                 "echo '=== Running Real AWS Integration Tests ==='",
-                "python -m pytest pipeline-project/tests/test_integration.py -v",
+                "python -m pytest tests/test_integration.py -v",
                 "echo 'Real integration tests completed successfully'"
             ]
         )
