@@ -1,5 +1,5 @@
 {
-  "app": "/Users/amielclemente/anaconda3/bin/python app.py",
+  "app": "python app.py",
   "watch": {
     "include": [
       "**"

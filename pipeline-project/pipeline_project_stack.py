@@ -33,8 +33,6 @@ class PipelineProjectStackV2(Stack):
                 "npm install -g aws-cdk",
                 "cd pipeline-project",
                 "pip install -r requirements.txt",
-                "echo '=== CLEARING CDK CONTEXT ==='",
-                "cdk context --clear",
                 "echo '=== BUILDING CDK STACK ==='",
                 "cdk synth"
             ],
