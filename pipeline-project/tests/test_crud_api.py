@@ -6,7 +6,7 @@ import pytest
 import json
 import boto3
 from unittest.mock import Mock, patch, MagicMock
-from moto import mock_dynamodb
+from moto import mock_dynamodb2
 import time
 
 # Import the CRUD handler
@@ -93,7 +93,7 @@ class TestCRUDAPI:
 
     def test_create_website_success(self, mock_context, sample_website_data):
         """Test successful website creation"""
-        with mock_dynamodb():
+        with mock_dynamodb2():
             # Create mock table
             dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
             table = dynamodb.create_table(
