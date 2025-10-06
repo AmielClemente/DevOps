@@ -376,12 +376,7 @@ class AppStack(Stack):
             "BlueGreenDeployment",
             alias=alias,
             deployment_config=codedeploy.LambdaDeploymentConfig.CANARY_10_PERCENT_5_MINUTES,
-            alarms=[invocations_alarm, duration_alarm, error_alarm, memory_alarm],
-            auto_rollback_config=codedeploy.AutoRollbackConfig(
-                failed_deployment=True,
-                stopped_deployment=True,
-                deployment_in_alarm=True
-            )
+            alarms=[invocations_alarm, duration_alarm, error_alarm, memory_alarm]
         )
         
         return deployment_group
