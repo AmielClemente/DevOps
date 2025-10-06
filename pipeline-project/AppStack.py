@@ -12,7 +12,7 @@ from aws_cdk import (
     aws_iam as iam,
     aws_sns as sns,
     aws_sns_subscriptions as subs,
-    # aws_codedeploy as codedeploy,  # DISABLED - requires subscription
+    aws_codedeploy as codedeploy,
     aws_dynamodb as dynamodb,
     aws_apigateway as apigateway,
 )
@@ -326,7 +326,7 @@ class AppStack(Stack):
             comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
             threshold=1,
             evaluation_periods=1,
-            alarm_description="Lambda invocations below threshold - potential deployment issue",
+            alarm_description="Lambda invocations below threshold - triggers rollback",
             treat_missing_data=cloudwatch.TreatMissingData.BREACHING,
         )
         
@@ -337,7 +337,7 @@ class AppStack(Stack):
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
             threshold=25000,  # 25 seconds (Lambda timeout is 30s)
             evaluation_periods=2,
-            alarm_description="Lambda duration exceeding threshold - performance degradation",
+            alarm_description="Lambda duration above threshold - triggers rollback",
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
         
@@ -348,7 +348,7 @@ class AppStack(Stack):
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
             threshold=0,
             evaluation_periods=1,
-            alarm_description="Lambda errors detected - deployment may have issues",
+            alarm_description="Lambda errors detected - triggers rollback",
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
         
@@ -359,7 +359,7 @@ class AppStack(Stack):
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
             threshold=80,  # 80% memory utilization
             evaluation_periods=2,
-            alarm_description="Lambda memory utilization high - potential memory leak",
+            alarm_description="Lambda memory utilization above threshold - triggers rollback",
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
         
@@ -369,17 +369,22 @@ class AppStack(Stack):
         error_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
         memory_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
         
-        # CodeDeploy Lambda deployment group - DISABLED due to subscription requirement
-        # deployment_group = codedeploy.LambdaDeploymentGroup(
-        #     self,
-        #     "BlueGreenDeployment",
-        #     alias=alias,
-        #     deployment_config=codedeploy.LambdaDeploymentConfig.CANARY_10_PERCENT_5_MINUTES,
-        #     alarms=[invocations_alarm, duration_alarm, error_alarm, memory_alarm]
-        # )
+        # Create CodeDeploy Lambda deployment group with canary configuration
+        # Following professor's requirements for automated rollback
+        deployment_group = codedeploy.LambdaDeploymentGroup(
+            self,
+            "BlueGreenDeployment",
+            alias=alias,
+            deployment_config=codedeploy.LambdaDeploymentConfig.CANARY_20PERCENT_5MINUTES,
+            alarms=[invocations_alarm, duration_alarm, error_alarm, memory_alarm],
+            auto_rollback_config=codedeploy.AutoRollbackConfig(
+                failed_deployment=True,
+                stopped_deployment=True,
+                deployment_in_alarm=True
+            )
+        )
         
-        # return deployment_group
-        return None
+        return deployment_group
 
     def create_alarm_table(self):
         """Create DynamoDB table for alarm logging"""
