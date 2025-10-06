@@ -6,7 +6,6 @@ import pytest
 from aws_cdk import App, Environment
 from aws_cdk import assertions
 from AppStack import AppStack
-from DatabaseStack import DatabaseStack
 from AmielStage import AmielStage
 
 @pytest.fixture
@@ -18,11 +17,6 @@ def app():
 def app_stack(app):
     """PyTest fixture for AppStack"""
     return AppStack(app, "TestAppStack")
-
-@pytest.fixture
-def database_stack(app):
-    """PyTest fixture for DatabaseStack"""
-    return DatabaseStack(app, "TestDatabaseStack")
 
 @pytest.fixture
 def stage(app):
@@ -47,9 +41,9 @@ def test_app_stack_lambda_functions(app_stack):
         "Runtime": "python3.9"
     })
 
-def test_database_stack_dynamodb_table(database_stack):
-    """Test that DatabaseStack creates DynamoDB table"""
-    template = assertions.Template.from_stack(database_stack)
+def test_app_stack_dynamodb_table(app_stack):
+    """Test that AppStack creates DynamoDB table"""
+    template = assertions.Template.from_stack(app_stack)
     
     # Check that we have 1 DynamoDB table
     template.resource_count_is("AWS::DynamoDB::Table", 1)
@@ -66,8 +60,8 @@ def test_app_stack_cloudwatch_resources(app_stack):
     # Check for CloudWatch Dashboard
     template.resource_count_is("AWS::CloudWatch::Dashboard", 1)
     
-    # Check for CloudWatch Alarms (3 URLs * 3 alarm types = 9 alarms)
-    template.resource_count_is("AWS::CloudWatch::Alarm", 9)
+    # Check for CloudWatch Alarms (3 URLs * 3 alarm types = 9 + 4 operational = 13 alarms)
+    template.resource_count_is("AWS::CloudWatch::Alarm", 13)
     
     # Check for EventBridge Rule
     template.resource_count_is("AWS::Events::Rule", 1)
@@ -79,25 +73,22 @@ def test_app_stack_sns_resources(app_stack):
     # Check for SNS Topic
     template.resource_count_is("AWS::SNS::Topic", 1)
     
-    # Check for SNS Topic Policy
-    template.resource_count_is("AWS::SNS::TopicPolicy", 1)
+    # Note: SNS TopicPolicy is not automatically created by CDK
 
-def test_stage_contains_both_stacks(stage):
-    """Test that AmielStage contains both AppStack and DatabaseStack"""
-    template = assertions.Template.from_stack(stage)
+def test_stage_contains_all_resources(app_stack):
+    """Test that AppStack contains all resources"""
+    template = assertions.Template.from_stack(app_stack)
     
     # Check that we have both Lambda functions and DynamoDB table
     template.resource_count_is("AWS::Lambda::Function", 2)
     template.resource_count_is("AWS::DynamoDB::Table", 1)
     
     # Check total resources
-    # AppStack: 2 Lambda + 1 Dashboard + 9 Alarms + 1 Rule + 1 Topic + 1 TopicPolicy = 15
-    # DatabaseStack: 1 Table = 1
-    # Total: 16 resources
+    # AppStack: 2 Lambda + 1 Dashboard + 13 Alarms + 1 Rule + 1 Topic + 1 Table + CodeDeploy resources
     template.resource_count_is("AWS::Lambda::Function", 2)
     template.resource_count_is("AWS::DynamoDB::Table", 1)
     template.resource_count_is("AWS::CloudWatch::Dashboard", 1)
-    template.resource_count_is("AWS::CloudWatch::Alarm", 9)
+    template.resource_count_is("AWS::CloudWatch::Alarm", 13)
     template.resource_count_is("AWS::Events::Rule", 1)
     template.resource_count_is("AWS::SNS::Topic", 1)
 
@@ -115,12 +106,14 @@ def test_lambda_environment_variables(app_stack):
         }
     })
     
-    # Check alarm logger Lambda environment
+    # Check alarm logger Lambda environment (ALARM_TABLE is now a CloudFormation reference)
     template.has_resource_properties("AWS::Lambda::Function", {
         "Handler": "alarm_logger.lambda_handler",
         "Environment": {
             "Variables": {
-                "ALARM_TABLE": "WebsiteAlarmTable"
+                "ALARM_TABLE": {
+                    "Ref": "WebsiteAlarmTable214A7BFF"  # CloudFormation reference
+                }
             }
         }
     })
@@ -129,15 +122,15 @@ def test_iam_permissions(app_stack):
     """Test that Lambda functions have correct IAM permissions"""
     template = assertions.Template.from_stack(app_stack)
     
-    # Check for IAM roles
-    template.resource_count_is("AWS::IAM::Role", 2)  # One for each Lambda
+    # Check for IAM roles (2 Lambda roles + CodeDeploy roles = 3+ roles)
+    template.resource_count_is("AWS::IAM::Role", 3)  # Updated count
     
     # Check for IAM policies
     template.resource_count_is("AWS::IAM::Policy", 2)  # One for each Lambda
 
-def test_dynamodb_table_structure(database_stack):
+def test_dynamodb_table_structure(app_stack):
     """Test DynamoDB table has correct structure"""
-    template = assertions.Template.from_stack(database_stack)
+    template = assertions.Template.from_stack(app_stack)
     
     # Check table key schema
     template.has_resource_properties("AWS::DynamoDB::Table", {

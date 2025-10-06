@@ -142,6 +142,70 @@ python -m pytest tests/test_website_monitor.py::test_lambda_handler -v
 - **DynamoDB**: Alarm history logging
 - **SNS**: Email notifications
 
+### **Week 11: Operational Health Monitoring & Blue-Green Deployment**
+
+#### **Lambda Operational Metrics**
+The system now monitors critical Lambda operational health metrics:
+
+- **Invocations**: Tracks Lambda function calls (alerts if < 1 invocation)
+- **Duration**: Monitors execution time (alerts if > 25 seconds)
+- **Errors**: Detects function errors (alerts if > 0 errors)
+- **Memory Utilization**: Tracks memory usage (alerts if > 80%)
+
+#### **Blue-Green Deployment with Automated Rollback**
+- **Lambda Alias**: Creates a "Prod" alias for seamless traffic shifting
+- **CodeDeploy Integration**: Implements canary deployment strategy
+- **Canary Configuration**: 10% traffic for 5 minutes before full deployment
+- **Automated Rollback**: Automatically rolls back if operational alarms trigger
+- **Deployment Group**: Links operational alarms to deployment decisions
+
+#### **Operational Alarms Configuration**
+```python
+# Invocations Alarm
+invocations_alarm = cloudwatch.Alarm(
+    metric=wh_lambda.metric_invocations(),
+    threshold=1,
+    comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD
+)
+
+# Duration Alarm  
+duration_alarm = cloudwatch.Alarm(
+    metric=wh_lambda.metric_duration(),
+    threshold=25000,  # 25 seconds
+    comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD
+)
+
+# Error Alarm
+error_alarm = cloudwatch.Alarm(
+    metric=wh_lambda.metric_errors(),
+    threshold=0,
+    comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD
+)
+
+# Memory Alarm
+memory_alarm = cloudwatch.Alarm(
+    metric=wh_lambda.metric("MemoryUtilization"),
+    threshold=80,  # 80% utilization
+    comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD
+)
+```
+
+#### **Deployment Group Setup**
+```python
+deployment_group = codedeploy.LambdaDeploymentGroup(
+    alias=alias,
+    deployment_config=codedeploy.LambdaDeploymentConfig.CANARY_10_PERCENT_5_MINUTES,
+    alarms=[invocations_alarm, duration_alarm, error_alarm, memory_alarm]
+)
+```
+
+#### **Rollback Automation**
+- **Automatic Detection**: CloudWatch alarms monitor key metrics during deployment
+- **Immediate Response**: Alarms trigger within 1-2 evaluation periods
+- **Traffic Shifting**: CodeDeploy automatically shifts traffic back to previous version
+- **Notification**: SNS alerts notify team of rollback events
+- **Audit Trail**: All rollback events logged in CloudWatch and CloudTrail
+
 ## 🔄 Pipeline Workflow
 
 ### **Automatic Trigger**
@@ -267,5 +331,5 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 **Pipeline Status**: ✅ Active  
-**Last Updated**: [Current Date]  
-**Version**: 1.0.0
+**Last Updated**: Week 11 - Operational Monitoring & Blue-Green Deployment  
+**Version**: 1.1.0

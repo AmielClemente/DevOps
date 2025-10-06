@@ -17,7 +17,4 @@ def test_pipeline_import():
     # Test that we can import the app stack
     from AppStack import AppStack
     assert AppStack is not None
-    
-    # Test that we can import the database stack
-    from DatabaseStack import DatabaseStack
-    assert DatabaseStack is not None
+

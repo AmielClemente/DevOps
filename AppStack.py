@@ -12,6 +12,8 @@ from aws_cdk import (
     aws_iam as iam,
     aws_sns as sns,
     aws_sns_subscriptions as subs,
+    aws_codedeploy as codedeploy,
+    aws_dynamodb as dynamodb,
 )
 from constructs import Construct
 import json
@@ -28,11 +30,14 @@ class AppStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # 1) Website Crawler Lambda
+        # 1) DynamoDB Table for Alarm Logging
+        alarm_table = self.create_alarm_table()
+
+        # 2) Website Crawler Lambda
         wh_lambda = self.create_website_crawler_lambda()
 
-        # 2) Alarm Logger Lambda  
-        db_lambda = self.create_alarm_logger_lambda()
+        # 3) Alarm Logger Lambda  
+        db_lambda = self.create_alarm_logger_lambda(alarm_table)
 
         # 3) SNS Topic for Alarms
         alarm_topic = sns.Topic(
@@ -53,6 +58,9 @@ class AppStack(Stack):
 
         # 5) CloudWatch Alarms
         self.create_alarms(alarm_topic)
+        
+        # 6) Lambda Operational Monitoring and Blue-Green Deployment
+        self.create_operational_monitoring(wh_lambda, alarm_topic)
 
     def create_website_crawler_lambda(self):
         """Create the website crawler Lambda function"""
@@ -90,7 +98,7 @@ class AppStack(Stack):
 
         return website_crawler
 
-    def create_alarm_logger_lambda(self):
+    def create_alarm_logger_lambda(self, alarm_table):
         """Create the alarm logger Lambda function"""
         alarm_logger = _lambda.Function(
             self,
@@ -99,10 +107,13 @@ class AppStack(Stack):
             handler="alarm_logger.lambda_handler",
             code=_lambda.Code.from_asset("lambda/alarm_logger"),
             environment={
-                "ALARM_TABLE": "WebsiteAlarmTable",  # Will be set by DatabaseStack
+                "ALARM_TABLE": alarm_table.table_name,
                 "FORCE_UPDATE": str(datetime.utcnow())
             }
         )
+
+        # Grant the Lambda function permission to write to the DynamoDB table
+        alarm_table.grant_write_data(alarm_logger)
 
         return alarm_logger
 
@@ -258,3 +269,114 @@ class AppStack(Stack):
                 treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
             )
             response_size_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
+
+    def create_operational_monitoring(self, wh_lambda, alarm_topic):
+        """Create operational monitoring and blue-green deployment for Lambda"""
+        
+        # Create Lambda alias for blue-green deployments
+        version = wh_lambda.current_version
+        alias = _lambda.Alias(
+            self,
+            "LambdaAlias",
+            alias_name="Prod",
+            version=version
+        )
+        
+        # Create operational CloudWatch metrics for Lambda
+        # Invocations metric
+        invoc_metric = wh_lambda.metric_invocations(
+            period=Duration.minutes(5),
+            statistic="Sum"
+        )
+        
+        # Duration metric
+        duration_metric = wh_lambda.metric_duration(
+            period=Duration.minutes(5),
+            statistic="Average"
+        )
+        
+        # Error metric
+        error_metric = wh_lambda.metric_errors(
+            period=Duration.minutes(5),
+            statistic="Sum"
+        )
+        
+        # Memory utilization metric
+        memory_metric = wh_lambda.metric(
+            metric_name="MemoryUtilization",
+            period=Duration.minutes(5),
+            statistic="Average"
+        )
+        
+        # Create operational alarms
+        invocations_alarm = cloudwatch.Alarm(
+            self,
+            "alarm_lambda_invocations",
+            metric=invoc_metric,
+            comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
+            threshold=1,
+            evaluation_periods=1,
+            alarm_description="Lambda invocations below threshold - potential deployment issue",
+            treat_missing_data=cloudwatch.TreatMissingData.BREACHING,
+        )
+        
+        duration_alarm = cloudwatch.Alarm(
+            self,
+            "alarm_lambda_duration",
+            metric=duration_metric,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            threshold=25000,  # 25 seconds (Lambda timeout is 30s)
+            evaluation_periods=2,
+            alarm_description="Lambda duration exceeding threshold - performance degradation",
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+        
+        error_alarm = cloudwatch.Alarm(
+            self,
+            "alarm_lambda_errors",
+            metric=error_metric,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            threshold=0,
+            evaluation_periods=1,
+            alarm_description="Lambda errors detected - deployment may have issues",
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+        
+        memory_alarm = cloudwatch.Alarm(
+            self,
+            "alarm_lambda_memory",
+            metric=memory_metric,
+            comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+            threshold=80,  # 80% memory utilization
+            evaluation_periods=2,
+            alarm_description="Lambda memory utilization high - potential memory leak",
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
+        )
+        
+        # Add alarm actions to notify via SNS
+        invocations_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
+        duration_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
+        error_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
+        memory_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
+        
+        # Create CodeDeploy Lambda deployment group with canary configuration
+        deployment_group = codedeploy.LambdaDeploymentGroup(
+            self,
+            "BlueGreenDeployment",
+            alias=alias,
+            deployment_config=codedeploy.LambdaDeploymentConfig.CANARY_10_PERCENT_5_MINUTES,
+            alarms=[invocations_alarm, duration_alarm, error_alarm, memory_alarm]
+        )
+        
+        return deployment_group
+
+    def create_alarm_table(self):
+        """Create DynamoDB table for alarm logging"""
+        alarm_table = dynamodb.Table(
+            self,
+            "WebsiteAlarmTable",
+            partition_key=dynamodb.Attribute(name="AlarmName", type=dynamodb.AttributeType.STRING),
+            sort_key=dynamodb.Attribute(name="Timestamp", type=dynamodb.AttributeType.STRING),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST
+        )
+        return alarm_table
