@@ -5,7 +5,7 @@ from aws_cdk import (
     SecretValue,
 )
 from aws_cdk import pipelines
-from aws_cdk.pipelines import CodePipelineSource, ShellStep
+from aws_cdk.pipelines import CodePipelineSource, ShellStep, ManualApprovalStep
 from constructs import Construct
 
 # Import the stage
@@ -141,6 +141,9 @@ class PipelineProjectStackV2(Stack):
             )
         )
         
+        # Create manual approval step for Production only
+        prod_approval = ManualApprovalStep("ProdApproval", comment="Approve deployment to Production (Live) environment")
+        
         # Add stages to pipeline with appropriate test blockers
         # Alpha (Development) - Unit Tests only
         pipeline.add_stage(alpha, pre=[unit_tests])
@@ -151,5 +154,5 @@ class PipelineProjectStackV2(Stack):
         # Gamma (Pre-Production) - Integration Tests only
         pipeline.add_stage(gamma, pre=[real_integration_tests])
         
-        # Production (Live) - Infrastructure Tests only
-        pipeline.add_stage(prod, pre=[infrastructure_tests])
+        # Production (Live) - Infrastructure Tests + Manual Approval
+        pipeline.add_stage(prod, pre=[infrastructure_tests, prod_approval])
