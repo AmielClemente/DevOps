@@ -156,3 +156,4 @@ def test_dynamodb_table_structure(app_stack):
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
+# Pipeline refresh - Wed Oct  8 21:56:32 AEDT 2025
