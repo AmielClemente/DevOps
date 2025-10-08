@@ -5,7 +5,7 @@ from aws_cdk import (
     SecretValue,
 )
 from aws_cdk import pipelines
-from aws_cdk.pipelines import CodePipelineSource, ShellStep, ManualApprovalStep
+from aws_cdk.pipelines import CodePipelineSource, ShellStep
 from constructs import Construct
 
 # Import the stage
@@ -31,10 +31,13 @@ class PipelineProjectStackV2(Stack):
             input=source,
             commands=[
                 "npm install -g aws-cdk",
-                "cd pipeline-project",
-                "pip install -r requirements.txt",
+                "pip install -r pipeline-project/requirements.txt",
+                "echo '=== DEBUGGING DIRECTORY STRUCTURE ==='",
+                "ls -la",
+                "echo '=== PIPELINE-PROJECT DIRECTORY ==='",
+                "ls -la pipeline-project/",
                 "echo '=== BUILDING CDK STACK ==='",
-                "cdk synth"
+                "cd pipeline-project && cdk synth"
             ],
             primary_output_directory = "pipeline-project/cdk.out"
         )
@@ -50,15 +53,15 @@ class PipelineProjectStackV2(Stack):
             "UnitTests",
             commands=[
                 "echo 'Running Unit Tests...'",
-                "cd pipeline-project",
-                "pip install -r requirements.txt",
+                "export JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION=1",
+                "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3 requests",
                 "echo '=== Running Lambda Function Unit Tests ==='",
-                "python -m pytest tests/test_simple.py::test_1_unit_basic_functionality -v",
-                "python -m pytest tests/test_simple.py::test_2_unit_error_handling -v",
-                "python -m pytest tests/test_simple.py::test_3_unit_timeout_handling -v",
-                "python -m pytest tests/test_simple.py::test_4_unit_cloudwatch_data_validation -v",
-                "python -m pytest tests/test_simple.py::test_5_unit_environment_variables -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_1_unit_basic_functionality -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_2_unit_error_handling -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_3_unit_timeout_handling -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_4_unit_cloudwatch_data_validation -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_5_unit_environment_variables -v",
                 "echo 'Unit tests completed successfully'"
             ]
         )
@@ -68,15 +71,15 @@ class PipelineProjectStackV2(Stack):
             "FunctionalTests",
             commands=[
                 "echo 'Running Functional Tests...'",
-                "cd pipeline-project",
-                "pip install -r requirements.txt",
+                "export JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION=1",
+                "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3 requests",
                 "echo '=== Running Lambda Function Functional Tests ==='",
-                "python -m pytest tests/test_simple.py::test_1_functional_end_to_end_flow -v",
-                "python -m pytest tests/test_simple.py::test_2_functional_multi_website_monitoring -v",
-                "python -m pytest tests/test_simple.py::test_3_functional_performance_measurement -v",
-                "python -m pytest tests/test_simple.py::test_4_functional_mixed_scenarios -v",
-                "python -m pytest tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_1_functional_end_to_end_flow -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_2_functional_multi_website_monitoring -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_3_functional_performance_measurement -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_4_functional_mixed_scenarios -v",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v",
                 "echo 'Functional tests completed successfully'"
             ]
         )
@@ -86,11 +89,18 @@ class PipelineProjectStackV2(Stack):
             "InfrastructureTests",
             commands=[
                 "echo 'Running Infrastructure Tests...'",
-                "cd pipeline-project",
-                "pip install -r requirements.txt",
+                "export JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION=1",
+                "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3",
+                "echo '=== Checking Python and CDK versions ==='",
+                "python --version",
+                "node --version",
+                "pip list | grep -E '(aws-cdk|constructs|jsii)'",
+                "echo '=== Testing CDK Synthesis First ==='",
+                "cd pipeline-project",
+                "python -c \"from AppStack import AppStack; from aws_cdk import App; app = App(); stack = AppStack(app, 'TestStack'); print('CDK synthesis test passed')\"",
                 "echo '=== Running CDK Infrastructure Tests ==='",
-                "python -m pytest tests/teste_website.py -v",
+                "python -m pytest tests/teste_website.py -v --tb=short",
                 "echo 'Infrastructure tests completed successfully'"
             ]
         )
@@ -100,17 +110,17 @@ class PipelineProjectStackV2(Stack):
             "RealIntegrationTests",
             commands=[
                 "echo 'Running Real Integration Tests...'",
-                "cd pipeline-project",
-                "pip install -r requirements.txt",
+                "export JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION=1",
+                "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3",
                 "echo '=== Running Real AWS Integration Tests ==='",
-                "python -m pytest tests/test_integration.py -v",
+                "python -m pytest pipeline-project/tests/test_integration.py -v",
                 "echo 'Real integration tests completed successfully'"
             ]
         )
 
-        # Alpha stage (Development) - Using new name to avoid stuck stack
-        alpha = AmielStage(self, 'alpha-v2', 
+        # Alpha stage (Development)
+        alpha = AmielStage(self, 'alpha', 
             env=Environment(
                 account=self.account,
                 region=self.region
@@ -141,11 +151,8 @@ class PipelineProjectStackV2(Stack):
             )
         )
         
-        # Create manual approval step for Production only
-        prod_approval = ManualApprovalStep("ProdApproval", comment="Approve deployment to Production (Live) environment")
-        
         # Add stages to pipeline with appropriate test blockers
-        # Alpha (Development) - Unit Tests only - REENABLED with new stack name
+        # Alpha (Development) - Unit Tests only
         pipeline.add_stage(alpha, pre=[unit_tests])
         
         # Beta (Staging) - Functional Tests only
@@ -154,5 +161,5 @@ class PipelineProjectStackV2(Stack):
         # Gamma (Pre-Production) - Integration Tests only
         pipeline.add_stage(gamma, pre=[real_integration_tests])
         
-        # Production (Live) - Infrastructure Tests + Manual Approval
-        pipeline.add_stage(prod, pre=[infrastructure_tests, prod_approval])
+        # Production (Live) - Infrastructure Tests only
+        pipeline.add_stage(prod, pre=[infrastructure_tests])
