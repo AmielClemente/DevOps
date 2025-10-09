@@ -7,9 +7,6 @@ import boto3
 import json
 import time
 import os
-from aws_cdk import App, Environment
-from AppStack import AppStack
-from AmielStage import AmielStage
 
 # Integration Test Configuration
 STACK_NAME_PREFIX = "IntegrationTest"
