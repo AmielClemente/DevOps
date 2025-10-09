@@ -337,3 +337,4 @@ def test_7_integration_end_to_end_monitoring_cycle(lambda_client, cloudwatch_cli
 if __name__ == "__main__":
     pytest.main([__file__, "-v", "--tb=short"])
 
+# Pipeline cache fix - Fri Oct 10 00:15:15 AEDT 2025
