@@ -6,6 +6,7 @@ from aws_cdk import (
 )
 from aws_cdk import pipelines
 from aws_cdk.pipelines import CodePipelineSource, ShellStep
+from aws_cdk import aws_iam as iam
 from constructs import Construct
 
 # Import the stage
@@ -163,3 +164,22 @@ class PipelineProjectStackV2(Stack):
         
         # Production (Live) - Infrastructure Tests only
         pipeline.add_stage(prod, pre=[infrastructure_tests])
+        
+        # Add AWS service permissions to CodeBuild role for integration tests
+        # This must be done after all stages are added
+        pipeline.build_pipeline()
+        pipeline.pipeline.role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name("AWSCloudFormationReadOnlyAccess")
+        )
+        pipeline.pipeline.role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonDynamoDBReadOnlyAccess")
+        )
+        pipeline.pipeline.role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name("AWSLambda_ReadOnlyAccess")
+        )
+        pipeline.pipeline.role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name("CloudWatchReadOnlyAccess")
+        )
+        pipeline.pipeline.role.add_managed_policy(
+            iam.ManagedPolicy.from_aws_managed_policy_name("AmazonSNSReadOnlyAccess")
+        )
