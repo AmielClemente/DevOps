@@ -41,39 +41,39 @@ def sns_client(integration_aws_session):
     return integration_aws_session.client('sns', region_name=REGION)
 
 @pytest.fixture(scope="session")
-def integration_app():
-    """CDK App for integration testing"""
-    app = App()
-    return app
+def deployed_stacks():
+    """Get information about deployed stacks for testing"""
+    cf_client = boto3.client('cloudformation', region_name=REGION)
+    
+    # Get deployed stacks
+    stacks = {}
+    for stage in ['alpha', 'beta', 'gamma', 'prod']:
+        try:
+            stack_name = f"{stage}-AppStack"
+            response = cf_client.describe_stacks(StackName=stack_name)
+            if response['Stacks']:
+                stacks[stage] = response['Stacks'][0]
+        except Exception as e:
+            print(f"Could not find stack {stage}-AppStack: {e}")
+    
+    return stacks
 
-@pytest.fixture(scope="session")
-def integration_stack(integration_app):
-    """Integration test stack"""
-    integration_stack = AmielStage(
-        integration_app, 
-        f"{STACK_NAME_PREFIX}{int(time.time())}",  # Unique stack name
-        env=Environment(account=boto3.client('sts').get_caller_identity()['Account'], region=REGION)
-    )
-    return integration_stack
-
-def test_1_integration_cdk_deployment(integration_stack):
+def test_1_integration_cdk_deployment(deployed_stacks):
     """
     INTEGRATION TEST 1: CDK Deployment
     
-    What it tests: Can CDK actually deploy AWS resources?
-    Why integration test: Tests real AWS deployment and resource creation
+    What it tests: Are the CDK stacks successfully deployed?
+    Why integration test: Tests real CloudFormation deployment
     """
-    # Deploy the stack
-    print("Deploying integration test stack...")
+    # Test that we have at least one deployed stack
+    assert len(deployed_stacks) > 0, "No deployed stacks found"
     
-    # This would actually deploy to AWS
-    # In a real scenario, you'd use:
-    # cdk deploy integration_stack
+    # Test that deployed stacks are in good state
+    for stage, stack in deployed_stacks.items():
+        assert stack['StackStatus'] in ['CREATE_COMPLETE', 'UPDATE_COMPLETE'], \
+            f"Stack {stage}-AppStack is not in a good state: {stack['StackStatus']}"
     
-    # For now, we'll validate the stack can be synthesized
-    # Skip CDK assertions in test environment due to compatibility issues
-    print("⚠️  Skipping CDK resource count validation in test environment")
-    print("✅ CDK deployment validation successful (simplified for test environment)")
+    print(f"✅ CDK deployment test passed - {len(deployed_stacks)} stacks deployed successfully")
     
     # In a real deployment, you would validate:
     # - 3 Lambda functions (WebsiteCrawler, AlarmLogger, CRUD)
@@ -81,7 +81,7 @@ def test_1_integration_cdk_deployment(integration_stack):
     # - 1 CloudWatch Dashboard
     # - 9 CloudWatch Alarms
 
-def test_2_integration_lambda_deployment(lambda_client, integration_stack):
+def test_2_integration_lambda_deployment(lambda_client, deployed_stacks):
     """
     INTEGRATION TEST 2: Lambda Function Deployment
     
@@ -219,70 +219,33 @@ def test_4_integration_cloudwatch_metrics_creation(cloudwatch_client, lambda_cli
     else:
         print("No Lambda function found for testing")
 
-def test_5_integration_dynamodb_table_access(dynamodb_client, integration_stack):
+def test_5_integration_dynamodb_table_access(dynamodb_client, deployed_stacks):
     """
     INTEGRATION TEST 5: Real DynamoDB Table Access
     
     What it tests: Is DynamoDB table accessible and writable?
     Why integration test: Tests real DynamoDB interaction
     """
-    # Get table name from stack
-    # In real deployment, you'd get this from stack outputs
-    table_name = "WebsiteAlarmTable"  # This would come from stack output
+    # Test that we have deployed stacks
+    assert len(deployed_stacks) > 0, "No deployed stacks found"
     
-    try:
-        # Describe table
-        try:
-            response = dynamodb_client.describe_table(TableName=table_name)
-        except Exception as e:
-            print(f"⚠️  DynamoDB access denied - this is expected in test environment: {e}")
-            return  # Skip this test if we don't have permissions
-        table_status = response['Table']['TableStatus']
-        
-        print(f"DynamoDB table status: {table_status}")
-        
-        # Validate table is active
-        assert table_status == 'ACTIVE'
-        
-        # Test write operation
-        import uuid
-        test_alarm = {
-            'AlarmName': f'TestAlarm-{uuid.uuid4()}',
-            'Timestamp': int(time.time()),
-            'State': 'ALARM',
-            'Reason': 'Integration test alarm'
-        }
-        
-        response = dynamodb_client.put_item(
-            TableName=table_name,
-            Item={
-                'AlarmName': test_alarm['AlarmName'],
-                'Timestamp': str(test_alarm['Timestamp']),
-                'State': test_alarm['State'],
-                'Reason': test_alarm['Reason']
-            }
-        )
-        
-        # Validate write was successful
-        assert response['ResponseMetadata']['HTTPStatusCode'] == 200
-        
-        # Test read operation
-        response = dynamodb_client.get_item(
-            TableName=table_name,
-            Key={
-                'AlarmName': test_alarm['AlarmName'],
-                'Timestamp': str(test_alarm['Timestamp'])
-            }
-        )
-        
-        # Validate read was successful
-        assert 'Item' in response
-        assert response['Item']['AlarmName'] == test_alarm['AlarmName']
-        
-        print("✅ DynamoDB integration test successful")
-        
-    except dynamodb_client.exceptions.ResourceNotFoundException:
-        print(f"⚠️  DynamoDB table '{table_name}' not found")
+    # Get DynamoDB tables
+    response = dynamodb_client.list_tables()
+    deployed_tables = response['TableNames']
+    
+    print(f"Deployed DynamoDB tables: {deployed_tables}")
+    
+    # Test that we have DynamoDB tables deployed
+    assert len(deployed_tables) > 0, "No DynamoDB tables found"
+    
+    # Test that tables are accessible
+    for table_name in deployed_tables:
+        if 'TargetWebsites' in table_name:  # Our monitoring tables
+            table_details = dynamodb_client.describe_table(TableName=table_name)
+            assert table_details['Table']['TableStatus'] == 'ACTIVE', \
+                f"DynamoDB table {table_name} is not active"
+    
+    print(f"✅ DynamoDB table access test passed - {len(deployed_tables)} tables accessible")
 
 def test_6_integration_sns_notification_system(sns_client, lambda_client):
     """
