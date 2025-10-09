@@ -372,10 +372,11 @@ class AppStack(Stack):
 
     def create_alarm_table(self):
         """Create DynamoDB table for alarm logging"""
+        # Use CDK-generated name to avoid conflicts
         alarm_table = dynamodb.Table(
             self,
             "WebsiteAlarmTable",
-            table_name=f"TargetWebsites-{self.stack_name}",
+            # Remove explicit table_name to let CDK generate a unique name
             partition_key=dynamodb.Attribute(name="AlarmName", type=dynamodb.AttributeType.STRING),
             sort_key=dynamodb.Attribute(name="Timestamp", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST
