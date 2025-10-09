@@ -64,21 +64,22 @@ class AppStack(Stack):
 
     def create_website_crawler_lambda(self):
         """Create the website crawler Lambda function"""
+        # Create a Lambda layer with dependencies
+        dependencies_layer = _lambda.LayerVersion(
+            self,
+            "DependenciesLayer",
+            code=_lambda.Code.from_asset("lambda/layers/dependencies"),
+            compatible_runtimes=[_lambda.Runtime.PYTHON_3_9],
+            description="Dependencies for website crawler Lambda"
+        )
+        
         website_crawler = _lambda.Function(
             self,
             "WebsiteCrawlerLambda",
             runtime=_lambda.Runtime.PYTHON_3_9,
             handler="lambda_function.lambda_handler",
-            code=_lambda.Code.from_asset(
-                "lambda/website_crawler",
-                bundling=_lambda.BundlingOptions(
-                    image=_lambda.Runtime.PYTHON_3_9.bundling_image,
-                    command=[
-                        "bash", "-c",
-                        "pip install -r requirements.txt -t /asset-output && cp -r . /asset-output"
-                    ],
-                ),
-            ),
+            code=_lambda.Code.from_asset("lambda/website_crawler"),
+            layers=[dependencies_layer],
             environment={
                 "URLS": json.dumps(constants.URLS),
                 "NAMESPACE": constants.URL_MONITOR_NAMESPACE,
