@@ -5,7 +5,7 @@ from aws_cdk import (
     SecretValue,
 )
 from aws_cdk import pipelines
-from aws_cdk.pipelines import CodePipelineSource, ShellStep
+from aws_cdk.pipelines import CodePipelineSource, ShellStep, ManualApprovalStep
 from aws_cdk import aws_iam as iam
 from constructs import Construct
 
@@ -162,8 +162,12 @@ class PipelineProjectStackV2(Stack):
         # Gamma (Pre-Production) - Integration Tests only
         pipeline.add_stage(gamma, pre=[real_integration_tests])
         
-        # Production (Live) - Infrastructure Tests only
-        pipeline.add_stage(prod, pre=[infrastructure_tests])
+        # Production (Live) - Manual approval + Infrastructure Tests
+        manual_approval = ManualApprovalStep(
+            "ProductionApproval",
+            comment="Please review and approve deployment to production environment"
+        )
+        pipeline.add_stage(prod, pre=[manual_approval, infrastructure_tests])
         
         # Add AWS service permissions to CodeBuild role for integration tests
         # This must be done after all stages are added
