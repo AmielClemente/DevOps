@@ -69,7 +69,16 @@ class AppStack(Stack):
             "WebsiteCrawlerLambda",
             runtime=_lambda.Runtime.PYTHON_3_9,
             handler="lambda_function.lambda_handler",
-            code=_lambda.Code.from_asset("lambda/website_crawler"),
+            code=_lambda.Code.from_asset(
+                "lambda/website_crawler",
+                bundling=_lambda.BundlingOptions(
+                    image=_lambda.Runtime.PYTHON_3_9.bundling_image,
+                    command=[
+                        "bash", "-c",
+                        "pip install -r requirements.txt -t /asset-output && cp -r . /asset-output"
+                    ],
+                ),
+            ),
             environment={
                 "URLS": json.dumps(constants.URLS),
                 "NAMESPACE": constants.URL_MONITOR_NAMESPACE,
