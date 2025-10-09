@@ -14,7 +14,6 @@ from aws_cdk import (
     aws_sns_subscriptions as subs,
     aws_codedeploy as codedeploy,
     aws_dynamodb as dynamodb,
-    aws_apigateway as apigateway,
 )
 from constructs import Construct
 import json
@@ -34,20 +33,11 @@ class AppStack(Stack):
         # 1) DynamoDB Table for Alarm Logging
         alarm_table = self.create_alarm_table()
 
-        # 2) DynamoDB Table for Target Websites (CRUD API)
-        target_websites_table = self.create_target_websites_table()
-
-        # 3) Website Crawler Lambda
+        # 2) Website Crawler Lambda
         wh_lambda = self.create_website_crawler_lambda()
 
-        # 4) Alarm Logger Lambda  
+        # 3) Alarm Logger Lambda  
         db_lambda = self.create_alarm_logger_lambda(alarm_table)
-
-        # 5) CRUD API Lambda Functions
-        crud_lambda = self.create_crud_lambda(target_websites_table)
-
-        # 6) API Gateway for CRUD operations
-        api = self.create_api_gateway(crud_lambda)
 
         # 3) SNS Topic for Alarms
         alarm_topic = sns.Topic(
@@ -326,7 +316,7 @@ class AppStack(Stack):
             comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
             threshold=1,
             evaluation_periods=1,
-            alarm_description="Lambda invocations below threshold - triggers rollback",
+            alarm_description="Lambda invocations below threshold - potential deployment issue",
             treat_missing_data=cloudwatch.TreatMissingData.BREACHING,
         )
         
@@ -337,7 +327,7 @@ class AppStack(Stack):
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
             threshold=25000,  # 25 seconds (Lambda timeout is 30s)
             evaluation_periods=2,
-            alarm_description="Lambda duration above threshold - triggers rollback",
+            alarm_description="Lambda duration exceeding threshold - performance degradation",
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
         
@@ -348,7 +338,7 @@ class AppStack(Stack):
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
             threshold=0,
             evaluation_periods=1,
-            alarm_description="Lambda errors detected - triggers rollback",
+            alarm_description="Lambda errors detected - deployment may have issues",
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
         
@@ -359,7 +349,7 @@ class AppStack(Stack):
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
             threshold=80,  # 80% memory utilization
             evaluation_periods=2,
-            alarm_description="Lambda memory utilization above threshold - triggers rollback",
+            alarm_description="Lambda memory utilization high - potential memory leak",
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
         
@@ -370,7 +360,6 @@ class AppStack(Stack):
         memory_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
         
         # Create CodeDeploy Lambda deployment group with canary configuration
-        # Following professor's requirements for automated rollback
         deployment_group = codedeploy.LambdaDeploymentGroup(
             self,
             "BlueGreenDeployment",
@@ -386,90 +375,9 @@ class AppStack(Stack):
         alarm_table = dynamodb.Table(
             self,
             "WebsiteAlarmTable",
+            table_name=f"TargetWebsites-{self.stack_name}",
             partition_key=dynamodb.Attribute(name="AlarmName", type=dynamodb.AttributeType.STRING),
             sort_key=dynamodb.Attribute(name="Timestamp", type=dynamodb.AttributeType.STRING),
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST
         )
         return alarm_table
-
-    def create_target_websites_table(self):
-        """Create DynamoDB table for target websites CRUD operations"""
-        target_table = dynamodb.Table(
-            self,
-            "TargetWebsitesTable",
-            partition_key=dynamodb.Attribute(name="id", type=dynamodb.AttributeType.STRING),
-            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST,
-            table_name=f"TargetWebsites-{self.stack_name}"
-        )
-        return target_table
-
-    def create_crud_lambda(self, target_table):
-        """Create Lambda function for CRUD operations"""
-        crud_lambda = _lambda.Function(
-            self,
-            "CRUDLambda",
-            runtime=_lambda.Runtime.PYTHON_3_9,
-            handler="crud_handler.lambda_handler",
-            code=_lambda.Code.from_asset("lambda/crud_api"),
-            environment={
-                "TARGET_TABLE": target_table.table_name,
-            },
-            timeout=Duration.seconds(30),
-        )
-
-        # Grant the Lambda function permission to read/write to the DynamoDB table
-        target_table.grant_read_write_data(crud_lambda)
-
-        return crud_lambda
-
-    def create_api_gateway(self, crud_lambda):
-        """Create API Gateway with CRUD endpoints"""
-        api = apigateway.RestApi(
-            self,
-            "WebsiteCRUDApi",
-            rest_api_name="Website Target CRUD API",
-            description="API for managing target websites for web crawler",
-            default_cors_preflight_options=apigateway.CorsOptions(
-                allow_origins=apigateway.Cors.ALL_ORIGINS,
-                allow_methods=apigateway.Cors.ALL_METHODS,
-                allow_headers=["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key"]
-            )
-        )
-
-        # Create /websites resource
-        websites = api.root.add_resource("websites")
-        
-        # GET /websites - List all websites
-        websites.add_method(
-            "GET",
-            apigateway.LambdaIntegration(crud_lambda)
-        )
-        
-        # POST /websites - Create new website
-        websites.add_method(
-            "POST",
-            apigateway.LambdaIntegration(crud_lambda)
-        )
-
-        # Create /websites/{id} resource
-        website = websites.add_resource("{id}")
-        
-        # GET /websites/{id} - Get specific website
-        website.add_method(
-            "GET",
-            apigateway.LambdaIntegration(crud_lambda)
-        )
-        
-        # PUT /websites/{id} - Update website
-        website.add_method(
-            "PUT",
-            apigateway.LambdaIntegration(crud_lambda)
-        )
-        
-        # DELETE /websites/{id} - Delete website
-        website.add_method(
-            "DELETE",
-            apigateway.LambdaIntegration(crud_lambda)
-        )
-
-        return api
