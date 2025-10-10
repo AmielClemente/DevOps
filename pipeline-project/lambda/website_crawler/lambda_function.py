@@ -6,6 +6,7 @@ import json
 import os
 
 def lambda_handler(event, context):
+    # Website monitoring Lambda function using built-in libraries
     cw = boto3.client("cloudwatch")
     
     # Get URLs from environment variable (set by CDK)
