@@ -1,5 +1,6 @@
 import boto3
-import requests
+import urllib.request
+import urllib.error
 import time
 import json
 import os
@@ -17,10 +18,11 @@ def lambda_handler(event, context):
     for url in urls:
         start = time.time()
         try:
-            resp = requests.get(url, timeout=5)
-            latency_ms = (time.time() - start) * 1000.0
-            availability = 1 if resp.status_code == 200 else 0
-            size = len(resp.content)
+            # Use urllib instead of requests to avoid external dependencies
+            with urllib.request.urlopen(url, timeout=5) as response:
+                latency_ms = (time.time() - start) * 1000.0
+                availability = 1 if response.status == 200 else 0
+                size = len(response.read())
         except Exception:
             latency_ms = 0
             availability = 0
