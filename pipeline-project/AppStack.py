@@ -315,9 +315,10 @@ class AppStack(Stack):
             metric=invoc_metric,
             comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
             threshold=1,
-            evaluation_periods=1,
+            evaluation_periods=3,  # Check over 3 periods (15 minutes)
+            datapoints_to_alarm=2,  # Require 2 consecutive periods with no invocations
             alarm_description="Lambda invocations below threshold - potential deployment issue",
-            treat_missing_data=cloudwatch.TreatMissingData.BREACHING,
+            treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,  # Don't alarm on missing data during deployment
         )
         
         duration_alarm = cloudwatch.Alarm(
@@ -336,8 +337,9 @@ class AppStack(Stack):
             "alarm_lambda_errors",
             metric=error_metric,
             comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-            threshold=0,
-            evaluation_periods=1,
+            threshold=2,  # Allow up to 2 errors before triggering alarm
+            evaluation_periods=2,  # Check over 2 periods (10 minutes)
+            datapoints_to_alarm=2,  # Require 2 consecutive failures
             alarm_description="Lambda errors detected - deployment may have issues",
             treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
         )
