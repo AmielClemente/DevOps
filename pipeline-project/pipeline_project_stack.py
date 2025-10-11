@@ -38,7 +38,9 @@ class PipelineProjectStackV2(Stack):
                 "echo '=== PIPELINE-PROJECT DIRECTORY ==='",
                 "ls -la pipeline-project/",
                 "echo '=== BUILDING CDK STACK ==='",
-                "cd pipeline-project && cdk synth"
+                "cd pipeline-project",
+                "python -c \"from AppStack import AppStack; from aws_cdk import App; app = App(); stack = AppStack(app, 'TestStack'); print('CDK synthesis test passed')\"",
+                "cdk synth"
             ],
             primary_output_directory = "pipeline-project/cdk.out"
         )

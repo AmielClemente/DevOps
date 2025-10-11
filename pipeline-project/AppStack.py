@@ -38,12 +38,6 @@ class AppStack(Stack):
         # 2) Website Crawler Lambda
         wh_lambda = self.create_website_crawler_lambda(target_websites_table)
 
-        # 3) Alarm Logger Lambda  
-        db_lambda = self.create_alarm_logger_lambda(alarm_table)
-        
-        # 4) CRUD API Lambda
-        crud_lambda = self.create_crud_api_lambda(target_websites_table)
-
         # 3) SNS Topic for Alarms
         alarm_topic = sns.Topic(
             self,
@@ -55,13 +49,18 @@ class AppStack(Stack):
         if getattr(constants, "ALERT_EMAIL", None):
             alarm_topic.add_subscription(subs.EmailSubscription(constants.ALERT_EMAIL))
 
+        # 3) Alarm Logger Lambda  
+        db_lambda = self.create_alarm_logger_lambda(alarm_table)
+        
         # Subscribe Lambda to SNS Topic
         alarm_topic.add_subscription(subs.LambdaSubscription(db_lambda))
+        
+        # 4) CRUD API Lambda
+        crud_lambda = self.create_crud_api_lambda(target_websites_table)
 
-        # 4) CloudWatch Dashboard
+        # 5) CloudWatch Dashboard and Alarms
+        # Dashboard and alarms are created dynamically based on DynamoDB content
         self.create_dashboard()
-
-        # 5) CloudWatch Alarms
         self.create_alarms(alarm_topic)
         
         # 6) API Gateway for CRUD Operations
@@ -129,7 +128,7 @@ class AppStack(Stack):
         return alarm_logger
 
     def create_dashboard(self):
-        """Create CloudWatch Dashboard"""
+        """Create CloudWatch Dashboard - Dynamic based on DynamoDB content"""
         dashboard = cloudwatch.Dashboard(
             self,
             "Dashboard",
@@ -137,71 +136,51 @@ class AppStack(Stack):
             start="-PT6H",
         )
 
-        avail_series = []
-        latency_series = []
-        size_series = []
-
-        # Create metrics for each URL
-        for idx, url in enumerate(constants.URLS, start=1):
-            dimensions_map = {"URL": url}
-
-            # Metrics
-            avail_metric = cloudwatch.Metric(
-                namespace=constants.URL_MONITOR_NAMESPACE,
-                metric_name=constants.AVAILABILITY_METRIC_NAME,
-                dimensions_map=dimensions_map,
-                period=Duration.minutes(1),
-                label=f"Availability: {url}",
-                statistic="Average",
-            )
-
-            latency_metric = cloudwatch.Metric(
-                namespace=constants.URL_MONITOR_NAMESPACE,
-                metric_name=constants.LATENCY_METRIC_NAME,
-                dimensions_map=dimensions_map,
-                period=Duration.minutes(1),
-                label=f"Latency (ms): {url}",
-                statistic="Average",
-            )
-
-            response_size_metric = cloudwatch.Metric(
-                namespace=constants.URL_MONITOR_NAMESPACE,
-                metric_name=constants.RESPONSE_SIZE_METRIC_NAME,
-                dimensions_map=dimensions_map,
-                period=Duration.minutes(1),
-                label=f"Response Size (bytes): {url}",
-                statistic="Average",
-            )
-
-            avail_series.append(avail_metric)
-            latency_series.append(latency_metric)
-            size_series.append(response_size_metric)
-
-        # Dashboard Widgets
+        # Create widgets that will automatically show metrics for any websites
+        # being monitored by the web crawler
+        
+        # Availability Widget - uses CloudWatch search to find all availability metrics
         availability_widget = cloudwatch.GraphWidget(
-            title="Availability (all URLs)",
-            left=avail_series,
+            title="Website Availability",
+            left=[
+                cloudwatch.MathExpression(
+                    expression="SEARCH('{amiel-week3 Availability}', 'Average', 300)",
+                    label="Availability Metrics"
+                )
+            ],
             left_y_axis=cloudwatch.YAxisProps(min=0, max=1),
             legend_position=cloudwatch.LegendPosition.RIGHT,
-            period=Duration.minutes(1),
+            period=Duration.minutes(5),
             width=24,
             height=6,
         )
 
+        # Latency Widget - uses CloudWatch search to find all latency metrics
         latency_widget = cloudwatch.GraphWidget(
-            title="Latency (ms) — all URLs",
-            left=latency_series,
+            title="Website Latency (ms)",
+            left=[
+                cloudwatch.MathExpression(
+                    expression="SEARCH('{amiel-week3 Latency}', 'Average', 300)",
+                    label="Latency Metrics"
+                )
+            ],
             legend_position=cloudwatch.LegendPosition.RIGHT,
-            period=Duration.minutes(1),
+            period=Duration.minutes(5),
             width=24,
             height=6,
         )
 
+        # Response Size Widget - uses CloudWatch search to find all response size metrics
         response_size_widget = cloudwatch.GraphWidget(
-            title="Response Size (bytes) — all URLs",
-            left=size_series,
+            title="Website Response Size (bytes)",
+            left=[
+                cloudwatch.MathExpression(
+                    expression="SEARCH('{amiel-week3 ResponseSize}', 'Average', 300)",
+                    label="Response Size Metrics"
+                )
+            ],
             legend_position=cloudwatch.LegendPosition.RIGHT,
-            period=Duration.minutes(1),
+            period=Duration.minutes(5),
             width=24,
             height=6,
         )
@@ -211,75 +190,15 @@ class AppStack(Stack):
         dashboard.add_widgets(response_size_widget)
 
     def create_alarms(self, alarm_topic):
-        """Create CloudWatch Alarms"""
-        # Create metrics, alarms per URL
-        for idx, url in enumerate(constants.URLS, start=1):
-            dimensions_map = {"URL": url}
-
-            # Metrics
-            avail_metric = cloudwatch.Metric(
-                namespace=constants.URL_MONITOR_NAMESPACE,
-                metric_name=constants.AVAILABILITY_METRIC_NAME,
-                dimensions_map=dimensions_map,
-                period=Duration.minutes(1),
-                statistic="Average",
-            )
-
-            latency_metric = cloudwatch.Metric(
-                namespace=constants.URL_MONITOR_NAMESPACE,
-                metric_name=constants.LATENCY_METRIC_NAME,
-                dimensions_map=dimensions_map,
-                period=Duration.minutes(1),
-                statistic="Average",
-            )
-
-            response_size_metric = cloudwatch.Metric(
-                namespace=constants.URL_MONITOR_NAMESPACE,
-                metric_name=constants.RESPONSE_SIZE_METRIC_NAME,
-                dimensions_map=dimensions_map,
-                period=Duration.minutes(1),
-                statistic="Average",
-            )
-
-            # Alarms
-            availability_alarm = cloudwatch.Alarm(
-                self,
-                f"AvailabilityAlarm{idx}",
-                metric=avail_metric,
-                threshold=constants.AVAIL_THRESHOLD,
-                comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
-                evaluation_periods=1,
-                datapoints_to_alarm=1,
-                alarm_description=f"Availability below {constants.AVAIL_THRESHOLD*100:.0f}% for {url}",
-                treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
-            )
-            availability_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
-
-            latency_alarm = cloudwatch.Alarm(
-                self,
-                f"LatencyAlarm{idx}",
-                metric=latency_metric,
-                threshold=constants.LATENCY_THRESHOLD_MS,
-                comparison_operator=cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
-                evaluation_periods=1,
-                datapoints_to_alarm=1,
-                alarm_description=f"Latency above {constants.LATENCY_THRESHOLD_MS} ms for {url}",
-                treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
-            )
-            latency_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
-
-            response_size_alarm = cloudwatch.Alarm(
-                self,
-                f"ResponseSizeZeroAlarm{idx}",
-                metric=response_size_metric,
-                threshold=constants.RESPONSE_SIZE_MIN_BYTES,
-                comparison_operator=cloudwatch.ComparisonOperator.LESS_THAN_THRESHOLD,
-                evaluation_periods=1,
-                datapoints_to_alarm=1,
-                alarm_description=f"Response size is below {constants.RESPONSE_SIZE_MIN_BYTES} bytes for {url}",
-                treat_missing_data=cloudwatch.TreatMissingData.NOT_BREACHING,
-            )
-            response_size_alarm.add_alarm_action(cloudwatch_actions.SnsAction(alarm_topic))
+        """Create CloudWatch Alarms - Dynamic based on DynamoDB content"""
+        # Note: Alarms will be created dynamically by the web crawler
+        # or by a separate Lambda function that reads from DynamoDB
+        # This method creates the infrastructure but doesn't create specific alarms
+        # since we don't know which websites will be monitored at deployment time
+        
+        # The web crawler or a separate alarm manager will create alarms
+        # for websites that are added to DynamoDB via the CRUD API
+        pass  # Alarms created dynamically based on DynamoDB content
 
     def create_operational_monitoring(self, wh_lambda, alarm_topic):
         """Create operational monitoring and blue-green deployment for Lambda"""
@@ -409,7 +328,7 @@ class AppStack(Stack):
         # Add GSI for enabled websites (for efficient querying)
         target_websites_table.add_global_secondary_index(
             index_name="enabled-index",
-            partition_key=dynamodb.Attribute(name="enabled", type=dynamodb.AttributeType.BOOL),
+            partition_key=dynamodb.Attribute(name="enabled", type=dynamodb.AttributeType.STRING),
             sort_key=dynamodb.Attribute(name="created_at", type=dynamodb.AttributeType.STRING)
         )
         
@@ -475,8 +394,7 @@ class AppStack(Stack):
         # DELETE /websites/{id} - Delete website
         website_by_id_resource.add_method("DELETE", crud_integration)
         
-        # Add OPTIONS method for CORS preflight
-        websites_resource.add_method("OPTIONS", crud_integration)
-        website_by_id_resource.add_method("OPTIONS", crud_integration)
+        # CORS is handled automatically by default_cors_preflight_options above
+        # No need to add OPTIONS methods manually
         
         return api

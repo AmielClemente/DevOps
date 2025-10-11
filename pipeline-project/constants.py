@@ -5,12 +5,8 @@ LATENCY_METRIC_NAME = "Latency"
 RESPONSE_SIZE_METRIC_NAME = "ResponseSize"
 ALERT_EMAIL = "22070210@student.westernsydney.edu.au"
 
-# URLs to monitor (same list as in lambda_function.py)
-URLS = [
-    "https://vuws.westernsydney.edu.au/",
-    "https://westernsydney.edu.au/",
-    "https://library.westernsydney.edu.au/",
-]
+# URLs are now managed dynamically via DynamoDB and CRUD API
+# No hardcoded URLs - everything is managed through the REST API
 
 # Alarm thresholds
 AVAIL_THRESHOLD = 0.99
