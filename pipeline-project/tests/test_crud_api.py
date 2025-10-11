@@ -1,7 +1,7 @@
 import pytest
 import json
 import boto3
-from moto import mock_dynamodb, mock_lambda
+from moto import mock_aws
 from unittest.mock import patch, MagicMock
 import os
 import sys
@@ -94,7 +94,7 @@ class TestCRUDAPI:
             'updated_at': '2024-01-01T00:00:00.000Z'
         }
 
-    @mock_dynamodb
+    @mock_aws
     def test_create_website_success(self, mock_event_create_website):
         """Test successful website creation"""
         # Create mock DynamoDB table
@@ -116,7 +116,7 @@ class TestCRUDAPI:
             assert body['website']['url'] == 'https://example.com'
             assert body['website']['name'] == 'Example Website'
 
-    @mock_dynamodb
+    @mock_aws
     def test_create_website_missing_required_fields(self):
         """Test website creation with missing required fields"""
         event = {
@@ -146,7 +146,7 @@ class TestCRUDAPI:
             assert 'error' in body
             assert 'required' in body['error']
 
-    @mock_dynamodb
+    @mock_aws
     def test_create_website_invalid_url(self):
         """Test website creation with invalid URL"""
         event = {
@@ -176,7 +176,7 @@ class TestCRUDAPI:
             assert 'error' in body
             assert 'http' in body['error'].lower()
 
-    @mock_dynamodb
+    @mock_aws
     def test_list_websites_success(self, mock_event_get_websites, sample_website_data):
         """Test successful website listing"""
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -200,7 +200,7 @@ class TestCRUDAPI:
             assert body['count'] == 1
             assert len(body['websites']) == 1
 
-    @mock_dynamodb
+    @mock_aws
     def test_get_website_success(self, mock_event_get_website, sample_website_data):
         """Test successful website retrieval"""
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -223,7 +223,7 @@ class TestCRUDAPI:
             assert body['website']['id'] == 'test-id'
             assert body['website']['url'] == 'https://example.com'
 
-    @mock_dynamodb
+    @mock_aws
     def test_get_website_not_found(self, mock_event_get_website):
         """Test website retrieval when website doesn't exist"""
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -242,7 +242,7 @@ class TestCRUDAPI:
             assert 'error' in body
             assert 'not found' in body['error'].lower()
 
-    @mock_dynamodb
+    @mock_aws
     def test_update_website_success(self, mock_event_update_website, sample_website_data):
         """Test successful website update"""
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -265,7 +265,7 @@ class TestCRUDAPI:
             assert body['website']['name'] == 'Updated Website'
             assert body['website']['enabled'] == False
 
-    @mock_dynamodb
+    @mock_aws
     def test_delete_website_success(self, mock_event_delete_website, sample_website_data):
         """Test successful website deletion"""
         dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
@@ -321,7 +321,7 @@ class TestCRUDAPI:
         assert 'error' in body
         assert 'Invalid JSON' in body['error']
 
-    @mock_dynamodb
+    @mock_aws
     def test_dynamodb_performance_read(self, sample_website_data):
         """Test DynamoDB read performance"""
         import time
@@ -346,7 +346,7 @@ class TestCRUDAPI:
             assert (end_time - start_time) < 0.1
             assert response['statusCode'] == 200
 
-    @mock_dynamodb
+    @mock_aws
     def test_dynamodb_performance_write(self):
         """Test DynamoDB write performance"""
         import time
