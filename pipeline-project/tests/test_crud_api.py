@@ -374,7 +374,7 @@ class TestCRUDAPI:
     def test_cors_headers(self, mock_event_get_websites):
         """Test that CORS headers are included in responses"""
         with patch.dict(os.environ, {'TARGET_WEBSITES_TABLE': 'test-table'}):
-            with mock_dynamodb():
+            with mock_aws():
                 dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
                 table = dynamodb.create_table(
                     TableName='test-table',

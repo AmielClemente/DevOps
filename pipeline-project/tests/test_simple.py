@@ -220,21 +220,22 @@ def test_5_unit_environment_variables(mock_environment, mock_cloudwatch, mock_dy
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
-            with patch('requests.get', return_value=mock_requests_success):
-                
-                import importlib.util
-                spec = importlib.util.spec_from_file_location(
-                    "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
-                )
-                lambda_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(lambda_module)
-                
-                result = lambda_module.lambda_handler({}, {})
-                
-                # Should use environment variables correctly
-                assert result['statusCode'] == 200
-                assert 'Checked 3 URLs' in result['body']  # Based on URLS env var
+            with patch('boto3.resource', return_value=mock_dynamodb):
+                with patch('requests.get', return_value=mock_requests_success):
+                    
+                    import importlib.util
+                    spec = importlib.util.spec_from_file_location(
+                        "lambda_function", 
+                        os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
+                    )
+                    lambda_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(lambda_module)
+                    
+                    result = lambda_module.lambda_handler({}, {})
+                    
+                    # Should use environment variables correctly
+                    assert result['statusCode'] == 200
+                    assert 'Checked 3 URLs' in result['body']  # Based on URLS env var
 
 # FUNCTIONAL TESTS (5 tests) - Test complete workflows end-to-end
 
@@ -293,44 +294,45 @@ def test_2_functional_multi_website_monitoring(mock_environment, mock_cloudwatch
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
-            
-            # Simulate different responses for different URLs
-            def mock_different_responses(url, timeout=5):
-                mock_response = Mock()
-                if 'vuws' in url:
-                    mock_response.status_code = 200
-                    mock_response.content = b'<html>VUWS Content</html>'
-                    mock_response.elapsed.total_seconds.return_value = 0.2
-                elif 'westernsydney' in url:
-                    mock_response.status_code = 200
-                    mock_response.content = b'<html>University Content</html>'
-                    mock_response.elapsed.total_seconds.return_value = 0.5
-                elif 'library' in url:
-                    mock_response.status_code = 200
-                    mock_response.content = b'<html>Library Content</html>'
-                    mock_response.elapsed.total_seconds.return_value = 0.8
-                else:
-                    mock_response.status_code = 404
-                    mock_response.content = b'Not Found'
-                    mock_response.elapsed.total_seconds.return_value = 1.0
-                return mock_response
-            
-            with patch('requests.get', side_effect=mock_different_responses):
+            with patch('boto3.resource', return_value=mock_dynamodb):
                 
-                import importlib.util
-                spec = importlib.util.spec_from_file_location(
-                    "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
-                )
-                lambda_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(lambda_module)
-                
-                result = lambda_module.lambda_handler({}, {})
-                
-                # Should handle multiple websites successfully
-                assert result['statusCode'] == 200
-                assert 'Checked 3 URLs' in result['body']
-                assert mock_cloudwatch.put_metric_data.call_count == 3
+                # Simulate different responses for different URLs
+                def mock_different_responses(url, timeout=5):
+                    mock_response = Mock()
+                    if 'vuws' in url:
+                        mock_response.status_code = 200
+                        mock_response.content = b'<html>VUWS Content</html>'
+                        mock_response.elapsed.total_seconds.return_value = 0.2
+                    elif 'westernsydney' in url:
+                        mock_response.status_code = 200
+                        mock_response.content = b'<html>University Content</html>'
+                        mock_response.elapsed.total_seconds.return_value = 0.5
+                    elif 'library' in url:
+                        mock_response.status_code = 200
+                        mock_response.content = b'<html>Library Content</html>'
+                        mock_response.elapsed.total_seconds.return_value = 0.8
+                    else:
+                        mock_response.status_code = 404
+                        mock_response.content = b'Not Found'
+                        mock_response.elapsed.total_seconds.return_value = 1.0
+                    return mock_response
+
+                with patch('requests.get', side_effect=mock_different_responses):
+                    
+                    import importlib.util
+                    spec = importlib.util.spec_from_file_location(
+                        "lambda_function", 
+                        os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
+                    )
+                    lambda_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(lambda_module)
+                    
+                    result = lambda_module.lambda_handler({}, {})
+                    
+                    # Should handle multiple websites successfully
+                    assert result['statusCode'] == 200
+                    assert 'Checked 3 URLs' in result['body']
+                    assert mock_cloudwatch.put_metric_data.call_count == 3
 
 # FUNCTIONAL TEST 3: Performance Measurement
 def test_3_functional_performance_measurement(mock_environment, mock_cloudwatch, mock_dynamodb):
@@ -347,38 +349,39 @@ def test_3_functional_performance_measurement(mock_environment, mock_cloudwatch,
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
-            def mock_get_with_timing(url, timeout=5):
-                mock_response = Mock()
-                mock_response.status_code = 200
-                mock_response.content = b'<html>Test content</html>'
-                mock_response.elapsed.total_seconds.return_value = 0.5
-                return mock_response
-            
-            with patch('requests.get', side_effect=mock_get_with_timing):
+            with patch('boto3.resource', return_value=mock_dynamodb):
+                def mock_get_with_timing(url, timeout=5):
+                    mock_response = Mock()
+                    mock_response.status_code = 200
+                    mock_response.content = b'<html>Test content</html>'
+                    mock_response.elapsed.total_seconds.return_value = 0.5
+                    return mock_response
                 
-                import importlib.util
-                spec = importlib.util.spec_from_file_location(
-                    "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
-                )
-                lambda_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(lambda_module)
-                
-                result = lambda_module.lambda_handler({}, {})
-                
-                # Performance assertions
-                assert result['statusCode'] == 200
-                assert 'Checked 3 URLs' in result['body']
-                assert mock_cloudwatch.put_metric_data.call_count == 3
-                
-                # Verify latency metrics are recorded
-                all_metrics = []
-                for call in mock_cloudwatch.put_metric_data.call_args_list:
-                    args, kwargs = call
-                    all_metrics.extend(kwargs['MetricData'])
-                
-                latency_metrics = [m for m in all_metrics if m['MetricName'] == 'Latency']
-                assert len(latency_metrics) == 3  # One for each URL
+                with patch('requests.get', side_effect=mock_get_with_timing):
+                    
+                    import importlib.util
+                    spec = importlib.util.spec_from_file_location(
+                        "lambda_function", 
+                        os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
+                    )
+                    lambda_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(lambda_module)
+                    
+                    result = lambda_module.lambda_handler({}, {})
+                    
+                    # Performance assertions
+                    assert result['statusCode'] == 200
+                    assert 'Checked 3 URLs' in result['body']
+                    assert mock_cloudwatch.put_metric_data.call_count == 3
+                    
+                    # Verify latency metrics are recorded
+                    all_metrics = []
+                    for call in mock_cloudwatch.put_metric_data.call_args_list:
+                        args, kwargs = call
+                        all_metrics.extend(kwargs['MetricData'])
+                    
+                    latency_metrics = [m for m in all_metrics if m['MetricName'] == 'Latency']
+                    assert len(latency_metrics) == 3  # One for each URL
 
 # FUNCTIONAL TEST 4: Mixed Success/Failure Scenarios
 def test_4_functional_mixed_scenarios(mock_environment, mock_cloudwatch, mock_dynamodb):
@@ -395,46 +398,47 @@ def test_4_functional_mixed_scenarios(mock_environment, mock_cloudwatch, mock_dy
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
-            
-            # Simulate mixed scenarios
-            def mock_mixed_responses(url, timeout=5):
-                mock_response = Mock()
-                if 'vuws' in url:
-                    # This one works
-                    mock_response.status_code = 200
-                    mock_response.content = b'<html>VUWS Working</html>'
-                    mock_response.elapsed.total_seconds.return_value = 0.2
-                elif 'westernsydney' in url:
-                    # This one is slow but works
-                    mock_response.status_code = 200
-                    mock_response.content = b'<html>University Slow</html>'
-                    mock_response.elapsed.total_seconds.return_value = 2.0
-                elif 'library' in url:
-                    # This one fails
-                    raise ConnectionError("Library site is down")
-                else:
-                    mock_response.status_code = 500
-                    mock_response.content = b'Server Error'
-                    mock_response.elapsed.total_seconds.return_value = 1.0
+            with patch('boto3.resource', return_value=mock_dynamodb):
                 
-                return mock_response
-            
-            with patch('requests.get', side_effect=mock_mixed_responses):
+                # Simulate mixed scenarios
+                def mock_mixed_responses(url, timeout=5):
+                    mock_response = Mock()
+                    if 'vuws' in url:
+                        # This one works
+                        mock_response.status_code = 200
+                        mock_response.content = b'<html>VUWS Working</html>'
+                        mock_response.elapsed.total_seconds.return_value = 0.2
+                    elif 'westernsydney' in url:
+                        # This one is slow but works
+                        mock_response.status_code = 200
+                        mock_response.content = b'<html>University Slow</html>'
+                        mock_response.elapsed.total_seconds.return_value = 2.0
+                    elif 'library' in url:
+                        # This one fails
+                        raise ConnectionError("Library site is down")
+                    else:
+                        mock_response.status_code = 500
+                        mock_response.content = b'Server Error'
+                        mock_response.elapsed.total_seconds.return_value = 1.0
+                    
+                    return mock_response
                 
-                import importlib.util
-                spec = importlib.util.spec_from_file_location(
-                    "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
-                )
-                lambda_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(lambda_module)
-                
-                result = lambda_module.lambda_handler({}, {})
-                
-                # Should handle mixed scenarios gracefully
-                assert result['statusCode'] == 200
-                assert 'Checked 3 URLs' in result['body']
-                assert mock_cloudwatch.put_metric_data.call_count == 3
+                with patch('requests.get', side_effect=mock_mixed_responses):
+                    
+                    import importlib.util
+                    spec = importlib.util.spec_from_file_location(
+                        "lambda_function", 
+                        os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
+                    )
+                    lambda_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(lambda_module)
+                    
+                    result = lambda_module.lambda_handler({}, {})
+                    
+                    # Should handle mixed scenarios gracefully
+                    assert result['statusCode'] == 200
+                    assert 'Checked 3 URLs' in result['body']
+                    assert mock_cloudwatch.put_metric_data.call_count == 3
 
 # FUNCTIONAL TEST 5: Complete Monitoring Cycle
 def test_5_functional_complete_monitoring_cycle(mock_environment, mock_cloudwatch, mock_dynamodb):
@@ -451,33 +455,34 @@ def test_5_functional_complete_monitoring_cycle(mock_environment, mock_cloudwatc
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
-            
-            # Simulate a complete monitoring cycle
-            def mock_complete_cycle(url, timeout=5):
-                mock_response = Mock()
-                mock_response.status_code = 200
-                mock_response.content = b'<html>Complete monitoring cycle test</html>'
-                mock_response.elapsed.total_seconds.return_value = 0.3
-                return mock_response
-            
-            with patch('requests.get', side_effect=mock_complete_cycle):
+            with patch('boto3.resource', return_value=mock_dynamodb):
                 
-                import importlib.util
-                spec = importlib.util.spec_from_file_location(
-                    "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
-                )
-                lambda_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(lambda_module)
+                # Simulate a complete monitoring cycle
+                def mock_complete_cycle(url, timeout=5):
+                    mock_response = Mock()
+                    mock_response.status_code = 200
+                    mock_response.content = b'<html>Complete monitoring cycle test</html>'
+                    mock_response.elapsed.total_seconds.return_value = 0.3
+                    return mock_response
                 
-                result = lambda_module.lambda_handler({}, {})
-                
-                # Complete cycle assertions
-                assert result['statusCode'] == 200
-                assert 'Checked 3 URLs' in result['body']
-                assert mock_cloudwatch.put_metric_data.call_count == 3
-                
-                # Verify all metrics are present
+                with patch('requests.get', side_effect=mock_complete_cycle):
+                    
+                    import importlib.util
+                    spec = importlib.util.spec_from_file_location(
+                        "lambda_function", 
+                        os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
+                    )
+                    lambda_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(lambda_module)
+                    
+                    result = lambda_module.lambda_handler({}, {})
+                    
+                    # Complete cycle assertions
+                    assert result['statusCode'] == 200
+                    assert 'Checked 3 URLs' in result['body']
+                    assert mock_cloudwatch.put_metric_data.call_count == 3
+                    
+                    # Verify all metrics are present
                 all_metrics = []
                 for call in mock_cloudwatch.put_metric_data.call_args_list:
                     args, kwargs = call

@@ -59,10 +59,10 @@ class PipelineProjectStackV2(Stack):
                 "export JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION=1",
                 "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3 requests",
-                "echo '=== Running Lambda Function Unit Tests ==='",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_1_unit_basic_functionality -v",
+                "echo '=== Running All Unit Tests ==='",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_1_unit_basic_functionality pipeline-project/tests/test_simple.py::test_2_unit_error_handling pipeline-project/tests/test_simple.py::test_3_unit_timeout_handling pipeline-project/tests/test_simple.py::test_4_unit_cloudwatch_data_validation pipeline-project/tests/test_simple.py::test_5_unit_environment_variables -v",
                 "echo '=== Running CRUD API Unit Tests ==='",
-                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_create_website_success -v",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_create_website_success pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_create_website_missing_required_fields pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_create_website_invalid_url pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_get_website_not_found pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_delete_website_success pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_invalid_http_method pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_invalid_json_body -v",
                 "echo 'Unit tests completed successfully'"
             ]
         )
@@ -75,8 +75,10 @@ class PipelineProjectStackV2(Stack):
                 "export JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION=1",
                 "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3 requests",
-                "echo '=== Running Functional Tests ==='",
-                "python -m pytest pipeline-project/tests/test_simple.py::test_1_functional_end_to_end_flow -v",
+                "echo '=== Running All Functional Tests ==='",
+                "python -m pytest pipeline-project/tests/test_simple.py::test_1_functional_end_to_end_flow pipeline-project/tests/test_simple.py::test_2_functional_multi_website_monitoring pipeline-project/tests/test_simple.py::test_3_functional_performance_measurement pipeline-project/tests/test_simple.py::test_4_functional_mixed_scenarios pipeline-project/tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v",
+                "echo '=== Running CRUD API Functional Tests ==='",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_list_websites_success pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_get_website_success pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_update_website_success pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_dynamodb_performance_read pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_dynamodb_performance_write pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_cors_headers -v",
                 "echo 'Functional tests completed successfully'"
             ]
         )
@@ -96,8 +98,8 @@ class PipelineProjectStackV2(Stack):
                 "echo '=== Testing CDK Synthesis First ==='",
                 "cd pipeline-project",
                 "python -c \"from AppStack import AppStack; from aws_cdk import App; app = App(); stack = AppStack(app, 'TestStack'); print('CDK synthesis test passed')\"",
-                "echo '=== Running CDK Infrastructure Tests ==='",
-                "python -m pytest tests/teste_website.py -v --tb=short",
+                "echo '=== Running Pipeline Import Tests ==='",
+                "python -m pytest tests/unit/test_pipeline_project_stack.py::test_pipeline_import -v --tb=short",
                 "echo 'Infrastructure tests completed successfully'"
             ]
         )
@@ -110,8 +112,8 @@ class PipelineProjectStackV2(Stack):
                 "export JSII_SILENCE_WARNING_DEPRECATED_NODE_VERSION=1",
                 "pip install -r pipeline-project/requirements.txt",
                 "pip install pytest boto3",
-                "echo '=== Running Real AWS Integration Tests ==='",
-                "python -m pytest pipeline-project/tests/test_integration.py -v",
+                "echo '=== Running All Integration Tests ==='",
+                "python -m pytest pipeline-project/tests/test_integration.py::test_1_integration_cdk_deployment pipeline-project/tests/test_integration.py::test_2_integration_lambda_deployment pipeline-project/tests/test_integration.py::test_3_integration_test_actual_lambda_invocation pipeline-project/tests/test_integration.py::test_4_integration_cloudwatch_metrics_creation pipeline-project/tests/test_integration.py::test_6_integration_sns_notification_system pipeline-project/tests/test_integration.py::test_7_integration_end_to_end_monitoring_cycle -v",
                 "echo 'Real integration tests completed successfully'"
             ]
         )

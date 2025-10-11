@@ -6,6 +6,7 @@ import os
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 import logging
+from decimal import Decimal
 
 # Configure logging
 logger = logging.getLogger()
@@ -13,6 +14,17 @@ logger.setLevel(logging.INFO)
 
 # Initialize DynamoDB
 dynamodb = boto3.resource('dynamodb')
+
+def convert_decimals(obj):
+    """Convert Decimal objects to regular numbers for JSON serialization"""
+    if isinstance(obj, Decimal):
+        return float(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_decimals(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_decimals(item) for item in obj]
+    else:
+        return obj
 
 def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     """
@@ -91,6 +103,9 @@ def list_websites() -> Dict[str, Any]:
         response = table.scan()
         websites = response.get('Items', [])
         
+        # Convert Decimal objects to regular numbers for JSON serialization
+        websites = convert_decimals(websites)
+        
         # Sort by created_at timestamp
         websites.sort(key=lambda x: x.get('created_at', ''), reverse=True)
         
@@ -113,8 +128,11 @@ def get_website(website_id: str) -> Dict[str, Any]:
         if 'Item' not in response:
             return create_response(404, {"error": "Website not found"})
         
+        # Convert Decimal objects to regular numbers for JSON serialization
+        website = convert_decimals(response['Item'])
+        
         return create_response(200, {
-            "website": response['Item']
+            "website": website
         })
         
     except Exception as e:
@@ -197,13 +215,18 @@ def update_website(website_id: str, data: Optional[Dict[str, Any]]) -> Dict[str,
         # Prepare update expression
         update_expression = "SET updated_at = :updated_at"
         expression_values = {':updated_at': datetime.utcnow().isoformat()}
+        expression_names = {}
         
         # Update fields that are provided
         updatable_fields = ['name', 'description', 'enabled', 'check_interval', 'timeout', 'expected_status']
         for field in updatable_fields:
             if field in data:
-                update_expression += f", {field} = :{field}"
+                # Use ExpressionAttributeNames for reserved keywords
+                attr_name = f"#{field}" if field in ['name', 'description'] else field
+                update_expression += f", {attr_name} = :{field}"
                 expression_values[f':{field}'] = data[field]
+                if field in ['name', 'description']:
+                    expression_names[f"#{field}"] = field
         
         # Special handling for URL (validate format)
         if 'url' in data:
@@ -213,17 +236,27 @@ def update_website(website_id: str, data: Optional[Dict[str, Any]]) -> Dict[str,
             update_expression += ", url = :url"
             expression_values[':url'] = url
         
+        # Prepare update parameters
+        update_params = {
+            'Key': {'id': website_id},
+            'UpdateExpression': update_expression,
+            'ExpressionAttributeValues': expression_values,
+            'ReturnValues': 'ALL_NEW'
+        }
+        
+        # Add ExpressionAttributeNames if needed
+        if expression_names:
+            update_params['ExpressionAttributeNames'] = expression_names
+        
         # Perform update
-        table.update_item(
-            Key={'id': website_id},
-            UpdateExpression=update_expression,
-            ExpressionAttributeValues=expression_values,
-            ReturnValues='ALL_NEW'
-        )
+        table.update_item(**update_params)
         
         # Get updated item
         response = table.get_item(Key={'id': website_id})
         updated_website = response['Item']
+        
+        # Convert Decimal objects to regular numbers for JSON serialization
+        updated_website = convert_decimals(updated_website)
         
         logger.info(f"Updated website {website_id}")
         
