@@ -14,6 +14,7 @@ from aws_cdk import (
     aws_sns_subscriptions as subs,
     aws_codedeploy as codedeploy,
     aws_dynamodb as dynamodb,
+    aws_apigateway as apigateway,
 )
 from constructs import Construct
 import json
@@ -30,14 +31,18 @@ class AppStack(Stack):
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        # 1) DynamoDB Table for Alarm Logging
+        # 1) DynamoDB Tables
         alarm_table = self.create_alarm_table()
+        target_websites_table = self.create_target_websites_table()
 
         # 2) Website Crawler Lambda
-        wh_lambda = self.create_website_crawler_lambda()
+        wh_lambda = self.create_website_crawler_lambda(target_websites_table)
 
         # 3) Alarm Logger Lambda  
         db_lambda = self.create_alarm_logger_lambda(alarm_table)
+        
+        # 4) CRUD API Lambda
+        crud_lambda = self.create_crud_api_lambda(target_websites_table)
 
         # 3) SNS Topic for Alarms
         alarm_topic = sns.Topic(
@@ -59,10 +64,13 @@ class AppStack(Stack):
         # 5) CloudWatch Alarms
         self.create_alarms(alarm_topic)
         
-        # 6) Lambda Operational Monitoring and Blue-Green Deployment
+        # 6) API Gateway for CRUD Operations
+        self.create_api_gateway(crud_lambda)
+        
+        # 7) Lambda Operational Monitoring and Blue-Green Deployment
         self.create_operational_monitoring(wh_lambda, alarm_topic)
 
-    def create_website_crawler_lambda(self):
+    def create_website_crawler_lambda(self, target_websites_table):
         """Create the website crawler Lambda function"""
         website_crawler = _lambda.Function(
             self,
@@ -71,7 +79,7 @@ class AppStack(Stack):
             handler="lambda_function.lambda_handler",
             code=_lambda.Code.from_asset("lambda/website_crawler"),
             environment={
-                "URLS": json.dumps(constants.URLS),
+                "TARGET_WEBSITES_TABLE": target_websites_table.table_name,
                 "NAMESPACE": constants.URL_MONITOR_NAMESPACE,
                 "AVAILABILITY_METRIC_NAME": constants.AVAILABILITY_METRIC_NAME,
                 "LATENCY_METRIC_NAME": constants.LATENCY_METRIC_NAME,
@@ -87,6 +95,9 @@ class AppStack(Stack):
                 resources=["*"],
             )
         )
+        
+        # Grant the Lambda function permission to read from the target websites table
+        target_websites_table.grant_read_data(website_crawler)
 
         # Run Lambda every 5 minutes
         rule = events.Rule(
@@ -385,3 +396,87 @@ class AppStack(Stack):
             billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST
         )
         return alarm_table
+    
+    def create_target_websites_table(self):
+        """Create DynamoDB table for target websites management"""
+        target_websites_table = dynamodb.Table(
+            self,
+            "TargetWebsitesTable",
+            partition_key=dynamodb.Attribute(name="id", type=dynamodb.AttributeType.STRING),
+            billing_mode=dynamodb.BillingMode.PAY_PER_REQUEST
+        )
+        
+        # Add GSI for enabled websites (for efficient querying)
+        target_websites_table.add_global_secondary_index(
+            index_name="enabled-index",
+            partition_key=dynamodb.Attribute(name="enabled", type=dynamodb.AttributeType.BOOL),
+            sort_key=dynamodb.Attribute(name="created_at", type=dynamodb.AttributeType.STRING)
+        )
+        
+        return target_websites_table
+    
+    def create_crud_api_lambda(self, target_websites_table):
+        """Create the CRUD API Lambda function"""
+        crud_lambda = _lambda.Function(
+            self,
+            "CRUDLambda",
+            runtime=_lambda.Runtime.PYTHON_3_9,
+            handler="crud_handler.lambda_handler",
+            code=_lambda.Code.from_asset("lambda/crud_api"),
+            environment={
+                "TARGET_WEBSITES_TABLE": target_websites_table.table_name,
+            },
+            timeout=Duration.seconds(30),
+        )
+        
+        # Grant the Lambda function permission to read/write to the target websites table
+        target_websites_table.grant_read_write_data(crud_lambda)
+        
+        return crud_lambda
+    
+    def create_api_gateway(self, crud_lambda):
+        """Create API Gateway with CRUD endpoints"""
+        api = apigateway.RestApi(
+            self,
+            "WebsiteTargetCRUDAPI",
+            rest_api_name="Website Target CRUD API",
+            description="API for managing website targets for web crawler",
+            default_cors_preflight_options=apigateway.CorsOptions(
+                allow_origins=apigateway.Cors.ALL_ORIGINS,
+                allow_methods=apigateway.Cors.ALL_METHODS,
+                allow_headers=["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key", "X-Amz-Security-Token"]
+            )
+        )
+        
+        # Create Lambda integration
+        crud_integration = apigateway.LambdaIntegration(
+            crud_lambda,
+            request_templates={"application/json": '{"statusCode": "200"}'}
+        )
+        
+        # Create /websites resource
+        websites_resource = api.root.add_resource("websites")
+        
+        # GET /websites - List all websites
+        websites_resource.add_method("GET", crud_integration)
+        
+        # POST /websites - Create new website
+        websites_resource.add_method("POST", crud_integration)
+        
+        # Create /websites/{id} resource
+        website_by_id_resource = websites_resource.add_resource("{id}")
+        
+        # GET /websites/{id} - Get specific website
+        website_by_id_resource.add_method("GET", crud_integration)
+        
+        # PUT /websites/{id} - Update website
+        website_by_id_resource.add_method("PUT", crud_integration)
+        
+        # DELETE /websites/{id} - Delete website
+        website_by_id_resource.add_method("DELETE", crud_integration)
+        
+        # Add OPTIONS method for CORS preflight
+        websites_resource.add_method("OPTIONS", crud_integration)
+        website_by_id_resource.add_method("OPTIONS", crud_integration)
+        
+        return api

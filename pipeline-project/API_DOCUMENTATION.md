@@ -2,17 +2,24 @@
 
 ## Overview
 
-The Website Crawler CRUD API provides RESTful endpoints for managing target websites that the web crawler monitors. This API allows you to create, read, update, and delete website entries stored in DynamoDB.
+The Website Crawler CRUD API provides RESTful endpoints for managing target websites that the web crawler monitors. This API allows you to create, read, update, and delete website entries stored in DynamoDB. The web crawler automatically reads from this database to determine which websites to monitor.
 
 ## Base URL
 
 ```
-https://{api-gateway-id}.execute-api.{region}.amazonaws.com/{stage}
+https://{api-gateway-id}.execute-api.{region}.amazonaws.com/prod
 ```
 
 ## Authentication
 
 Currently, the API is public and does not require authentication. In production environments, consider implementing API keys or IAM-based authentication.
+
+## Integration with Web Crawler
+
+- **Automatic Monitoring**: Websites added via the API are automatically monitored by the web crawler
+- **Real-time Updates**: Changes to website configuration take effect on the next crawler run (every 5 minutes)
+- **Enabled/Disabled Control**: Use the `enabled` field to start/stop monitoring specific websites
+- **CloudWatch Integration**: All monitored websites generate CloudWatch metrics for availability, latency, and response size
 
 ## Endpoints
 

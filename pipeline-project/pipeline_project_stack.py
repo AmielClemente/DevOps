@@ -63,6 +63,13 @@ class PipelineProjectStackV2(Stack):
                 "python -m pytest pipeline-project/tests/test_simple.py::test_3_unit_timeout_handling -v",
                 "python -m pytest pipeline-project/tests/test_simple.py::test_4_unit_cloudwatch_data_validation -v",
                 "python -m pytest pipeline-project/tests/test_simple.py::test_5_unit_environment_variables -v",
+                "echo '=== Running CRUD API Unit Tests ==='",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_create_website_success -v",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_create_website_missing_required_fields -v",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_list_websites_success -v",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_get_website_success -v",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_update_website_success -v",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_delete_website_success -v",
                 "echo 'Unit tests completed successfully'"
             ]
         )
@@ -81,6 +88,10 @@ class PipelineProjectStackV2(Stack):
                 "python -m pytest pipeline-project/tests/test_simple.py::test_3_functional_performance_measurement -v",
                 "python -m pytest pipeline-project/tests/test_simple.py::test_4_functional_mixed_scenarios -v",
                 "python -m pytest pipeline-project/tests/test_simple.py::test_5_functional_complete_monitoring_cycle -v",
+                "echo '=== Running CRUD API Functional Tests ==='",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_dynamodb_performance_read -v",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_dynamodb_performance_write -v",
+                "python -m pytest pipeline-project/tests/test_crud_api.py::TestCRUDAPI::test_cors_headers -v",
                 "echo 'Functional tests completed successfully'"
             ]
         )

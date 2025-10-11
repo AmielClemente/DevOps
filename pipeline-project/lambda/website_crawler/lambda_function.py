@@ -5,6 +5,7 @@ import time
 import json
 import os
 import logging
+from boto3.dynamodb.conditions import Attr
 
 # Configure logging
 logger = logging.getLogger()
@@ -13,15 +14,40 @@ logger.setLevel(logging.INFO)
 def lambda_handler(event, context):
     # Website monitoring Lambda function using built-in libraries
     cw = boto3.client("cloudwatch")
+    dynamodb = boto3.resource("dynamodb")
     
-    # Get URLs from environment variable (set by CDK)
-    urls = json.loads(os.environ.get("URLS", "[]"))
+    # Get table name from environment variable
+    table_name = os.environ.get("TARGET_WEBSITES_TABLE")
+    if not table_name:
+        logger.error("TARGET_WEBSITES_TABLE environment variable not set")
+        return {"statusCode": 500, "body": "Configuration error"}
+    
+    table = dynamodb.Table(table_name)
+    
+    # Get configuration from environment variables
     namespace = os.environ.get("NAMESPACE", "amiel-week3")
     availability_metric = os.environ.get("AVAILABILITY_METRIC_NAME", "Availability")
     latency_metric = os.environ.get("LATENCY_METRIC_NAME", "Latency")
     response_size_metric = os.environ.get("RESPONSE_SIZE_METRIC_NAME", "ResponseSize")
 
-    logger.info(f"Starting website monitoring for {len(urls)} URLs")
+    logger.info(f"Starting website monitoring")
+    
+    try:
+        # Get enabled websites from DynamoDB
+        response = table.scan(
+            FilterExpression=Attr('enabled').eq(True)
+        )
+        urls = [item['url'] for item in response.get('Items', [])]
+        
+        if not urls:
+            logger.warning("No enabled websites found in target list")
+            return {"statusCode": 200, "body": "No websites to monitor"}
+        
+        logger.info(f"Found {len(urls)} enabled websites to monitor")
+        
+    except Exception as e:
+        logger.error(f"Error reading from DynamoDB: {str(e)}")
+        return {"statusCode": 500, "body": "Database error"}
     
     successful_checks = 0
     failed_checks = 0
