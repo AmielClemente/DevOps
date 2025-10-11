@@ -22,7 +22,7 @@ from requests.exceptions import RequestException, Timeout, ConnectionError
 def mock_environment():
     """Fixture for environment variables"""
     return {
-        'URLS': '["https://vuws.westernsydney.edu.au/", "https://westernsydney.edu.au/", "https://library.westernsydney.edu.au/"]',
+        'TARGET_WEBSITES_TABLE': 'test-target-websites-table',
         'NAMESPACE': 'test-namespace',
         'AVAILABILITY_METRIC_NAME': 'Availability',
         'LATENCY_METRIC_NAME': 'Latency',
@@ -37,6 +37,21 @@ def mock_cloudwatch():
     return mock_cw
 
 @pytest.fixture
+def mock_dynamodb():
+    """Fixture for DynamoDB resource"""
+    mock_db = Mock()
+    mock_table = Mock()
+    mock_table.scan.return_value = {
+        'Items': [
+            {'url': 'https://vuws.westernsydney.edu.au/', 'enabled': True},
+            {'url': 'https://westernsydney.edu.au/', 'enabled': True},
+            {'url': 'https://library.westernsydney.edu.au/', 'enabled': True}
+        ]
+    }
+    mock_db.Table.return_value = mock_table
+    return mock_db
+
+@pytest.fixture
 def mock_requests_success():
     """Fixture for successful HTTP requests"""
     mock_response = Mock()
@@ -48,7 +63,7 @@ def mock_requests_success():
 # UNIT TESTS (5 tests) - Test individual components in isolation
 
 # UNIT TEST 1: Basic Functionality
-def test_1_unit_basic_functionality(mock_environment, mock_cloudwatch, mock_requests_success):
+def test_1_unit_basic_functionality(mock_environment, mock_cloudwatch, mock_dynamodb, mock_requests_success):
     """
     UNIT TEST 1: Basic Lambda Functionality
     
@@ -62,23 +77,24 @@ def test_1_unit_basic_functionality(mock_environment, mock_cloudwatch, mock_requ
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
-            with patch('requests.get', return_value=mock_requests_success):
-                
-                # Import using importlib to avoid lambda keyword issues
-                import importlib.util
-                spec = importlib.util.spec_from_file_location(
-                    "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
-                )
-                lambda_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(lambda_module)
-                
-                result = lambda_module.lambda_handler({}, {})
-                
-                # Assertions
-                assert result['statusCode'] == 200
-                assert 'Checked 3 URLs' in result['body']
-                assert mock_cloudwatch.put_metric_data.call_count == 3
+            with patch('boto3.resource', return_value=mock_dynamodb):
+                with patch('requests.get', return_value=mock_requests_success):
+                    
+                    # Import using importlib to avoid lambda keyword issues
+                    import importlib.util
+                    spec = importlib.util.spec_from_file_location(
+                        "lambda_function", 
+                        os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
+                    )
+                    lambda_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(lambda_module)
+                    
+                    result = lambda_module.lambda_handler({}, {})
+                    
+                    # Assertions
+                    assert result['statusCode'] == 200
+                    assert 'Checked 3 URLs' in result['body']
+                    assert mock_cloudwatch.put_metric_data.call_count == 3
 
 # UNIT TEST 2: Error Handling
 def test_2_unit_error_handling(mock_environment, mock_cloudwatch):
