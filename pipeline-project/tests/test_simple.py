@@ -144,24 +144,25 @@ def test_3_unit_timeout_handling(mock_environment, mock_cloudwatch, mock_dynamod
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
-            with patch('requests.get', side_effect=Timeout("Request timeout")):
-                
-                import importlib.util
-                spec = importlib.util.spec_from_file_location(
-                    "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
-                )
-                lambda_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(lambda_module)
-                
-                result = lambda_module.lambda_handler({}, {})
-                
-                # Should handle timeout gracefully
-                assert result['statusCode'] == 200
-                assert 'Checked 3 URLs' in result['body']
+            with patch('boto3.resource', return_value=mock_dynamodb):
+                with patch('requests.get', side_effect=Timeout("Request timeout")):
+                    
+                    import importlib.util
+                    spec = importlib.util.spec_from_file_location(
+                        "lambda_function", 
+                        os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
+                    )
+                    lambda_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(lambda_module)
+                    
+                    result = lambda_module.lambda_handler({}, {})
+                    
+                    # Should handle timeout gracefully
+                    assert result['statusCode'] == 200
+                    assert 'Checked 3 URLs' in result['body']
 
 # UNIT TEST 4: CloudWatch Data Validation
-def test_4_unit_cloudwatch_data_validation(mock_environment, mock_cloudwatch, mock_requests_success):
+def test_4_unit_cloudwatch_data_validation(mock_environment, mock_cloudwatch, mock_dynamodb, mock_requests_success):
     """
     UNIT TEST 4: CloudWatch Data Validation
     
@@ -175,20 +176,21 @@ def test_4_unit_cloudwatch_data_validation(mock_environment, mock_cloudwatch, mo
     
     with patch.dict(os.environ, mock_environment):
         with patch('boto3.client', return_value=mock_cloudwatch):
-            with patch('requests.get', return_value=mock_requests_success):
-                
-                import importlib.util
-                spec = importlib.util.spec_from_file_location(
-                    "lambda_function", 
-                    os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
-                )
-                lambda_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(lambda_module)
-                
-                result = lambda_module.lambda_handler({}, {})
-                
-                # Check CloudWatch calls
-                assert mock_cloudwatch.put_metric_data.call_count == 3
+            with patch('boto3.resource', return_value=mock_dynamodb):
+                with patch('requests.get', return_value=mock_requests_success):
+                    
+                    import importlib.util
+                    spec = importlib.util.spec_from_file_location(
+                        "lambda_function", 
+                        os.path.join(os.path.dirname(__file__), '..', 'lambda', 'website_crawler', 'lambda_function.py')
+                    )
+                    lambda_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(lambda_module)
+                    
+                    result = lambda_module.lambda_handler({}, {})
+                    
+                    # Check CloudWatch calls
+                    assert mock_cloudwatch.put_metric_data.call_count == 3
                 
                 # Validate data structure
                 calls = mock_cloudwatch.put_metric_data.call_args_list
@@ -204,7 +206,7 @@ def test_4_unit_cloudwatch_data_validation(mock_environment, mock_cloudwatch, mo
                     assert 'ResponseSize' in metric_names
 
 # UNIT TEST 5: Environment Variable Handling
-def test_5_unit_environment_variables(mock_environment, mock_cloudwatch, mock_requests_success):
+def test_5_unit_environment_variables(mock_environment, mock_cloudwatch, mock_dynamodb, mock_requests_success):
     """
     UNIT TEST 5: Environment Variable Handling
     
@@ -277,7 +279,7 @@ def test_1_functional_end_to_end_flow(mock_environment, mock_cloudwatch, mock_dy
                     assert mock_cloudwatch.put_metric_data.call_count == 3
 
 # FUNCTIONAL TEST 2: Multi-Website Monitoring
-def test_2_functional_multi_website_monitoring(mock_environment, mock_cloudwatch):
+def test_2_functional_multi_website_monitoring(mock_environment, mock_cloudwatch, mock_dynamodb):
     """
     FUNCTIONAL TEST 2: Multi-Website Monitoring
     
@@ -331,7 +333,7 @@ def test_2_functional_multi_website_monitoring(mock_environment, mock_cloudwatch
                 assert mock_cloudwatch.put_metric_data.call_count == 3
 
 # FUNCTIONAL TEST 3: Performance Measurement
-def test_3_functional_performance_measurement(mock_environment, mock_cloudwatch):
+def test_3_functional_performance_measurement(mock_environment, mock_cloudwatch, mock_dynamodb):
     """
     FUNCTIONAL TEST 3: Performance Measurement
     
@@ -379,7 +381,7 @@ def test_3_functional_performance_measurement(mock_environment, mock_cloudwatch)
                 assert len(latency_metrics) == 3  # One for each URL
 
 # FUNCTIONAL TEST 4: Mixed Success/Failure Scenarios
-def test_4_functional_mixed_scenarios(mock_environment, mock_cloudwatch):
+def test_4_functional_mixed_scenarios(mock_environment, mock_cloudwatch, mock_dynamodb):
     """
     FUNCTIONAL TEST 4: Mixed Success/Failure Scenarios
     
@@ -435,7 +437,7 @@ def test_4_functional_mixed_scenarios(mock_environment, mock_cloudwatch):
                 assert mock_cloudwatch.put_metric_data.call_count == 3
 
 # FUNCTIONAL TEST 5: Complete Monitoring Cycle
-def test_5_functional_complete_monitoring_cycle(mock_environment, mock_cloudwatch):
+def test_5_functional_complete_monitoring_cycle(mock_environment, mock_cloudwatch, mock_dynamodb):
     """
     FUNCTIONAL TEST 5: Complete Monitoring Cycle
     
