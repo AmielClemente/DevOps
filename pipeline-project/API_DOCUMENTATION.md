@@ -55,7 +55,7 @@ Retrieves all target websites from the database.
 #### Example Request
 
 ```bash
-curl -X GET https://your-api-gateway-url/websites
+curl -X GET https://lli66x0cr8.execute-api.us-east-1.amazonaws.com/websites
 ```
 
 ---
