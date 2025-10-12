@@ -261,3 +261,4 @@ aws cloudwatch list-metrics --namespace "amiel-week3" --output table
 ---
 
 **Remember**: Project 2 is **already complete and working**. You just need to demonstrate its capabilities!
+
