@@ -7,7 +7,8 @@ The Website Crawler CRUD API provides RESTful endpoints for managing target webs
 ## Base URL
 
 ```
-https://{api-gateway-id}.execute-api.{region}.amazonaws.com/prod
+https://lli66x0cr8.execute-api.us-east-1.amazonaws.com/prod/websites
+
 ```
 
 ## Authentication
@@ -91,7 +92,7 @@ Retrieves a specific website by its ID.
 #### Example Request
 
 ```bash
-curl -X GET https://your-api-gateway-url/websites/uuid-string
+curl -X GET https://lli66x0cr8.execute-api.us-east-1.amazonaws.com/prod/websites/uuid-string
 ```
 
 ---
@@ -152,7 +153,9 @@ Creates a new target website entry.
 #### Example Request
 
 ```bash
-curl -X POST https://your-api-gateway-url/websites \
+
+curl -X POST https://lli66x0cr8.execute-api.us-east-1.amazonaws.com/prod/websites \
+
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://example.com",
@@ -220,7 +223,9 @@ Updates an existing website entry.
 #### Example Request
 
 ```bash
-curl -X PUT https://your-api-gateway-url/websites/uuid-string \
+curl -X PUT https://lli66x0cr8.execute-api.us-east-1.amazonaws.com/websites/uuid-string \
+
+
   -H "Content-Type: application/json" \
   -d '{
     "name": "Updated Website Name",
@@ -360,7 +365,7 @@ The CRUD API integrates with the web crawler system as follows:
 
 1. **Create the website entry**:
    ```bash
-   curl -X POST https://your-api-gateway-url/websites \
+   curl -X POST https://lli66x0cr8.execute-api.us-east-1.amazonaws.com/websites \
      -H "Content-Type: application/json" \
      -d '{
        "url": "https://my-website.com",
@@ -372,7 +377,7 @@ The CRUD API integrates with the web crawler system as follows:
 
 2. **Verify the website was created**:
    ```bash
-   curl -X GET https://your-api-gateway-url/websites
+   curl -X GET https://lli66x0cr8.execute-api.us-east-1.amazonaws.com/websites
    ```
 
 3. **The web crawler will automatically start monitoring the new website**
@@ -381,14 +386,14 @@ The CRUD API integrates with the web crawler system as follows:
 
 1. **Update the website to disable monitoring**:
    ```bash
-   curl -X PUT https://your-api-gateway-url/websites/{website-id} \
+   curl -X PUT https://lli66x0cr8.execute-api.us-east-1.amazonaws.com/websites/{website-id} \
      -H "Content-Type: application/json" \
      -d '{"enabled": false}'
    ```
 
 2. **Re-enable monitoring when ready**:
    ```bash
-   curl -X PUT https://your-api-gateway-url/websites/{website-id} \
+   curl -X PUT https://lli66x0cr8.execute-api.us-east-1.amazonaws.com/websites/{website-id} \
      -H "Content-Type: application/json" \
      -d '{"enabled": true}'
    ```
@@ -397,7 +402,7 @@ The CRUD API integrates with the web crawler system as follows:
 
 1. **Delete the website entry**:
    ```bash
-   curl -X DELETE https://your-api-gateway-url/websites/{website-id}
+   curl -X DELETE https://lli66x0cr8.execute-api.us-east-1.amazonaws.com/websites/{website-id}
    ```
 
 2. **The web crawler will stop monitoring the website**
