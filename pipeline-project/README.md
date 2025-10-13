@@ -62,10 +62,10 @@ A comprehensive CI/CD pipeline built with AWS CodePipeline and CDK that automati
 - **Output**: Built application artifacts
 
 ### **3. Deploy Stages**
-- **Alpha**: Development/testing environment (Unit Tests + Manual Approval)
-- **Beta**: Staging environment (Functional Tests + Manual Approval)
-- **Gamma**: Pre-production environment (Integration Tests + Manual Approval)
-- **Production**: Live environment (Infrastructure Tests + Manual Approval) 🔒
+- **Alpha**: Development/testing environment (Unit Tests)
+- **Beta**: Staging environment (Functional Tests)
+- **Gamma**: Pre-production environment (Integration Tests)
+- **Production**: Live environment (Infrastructure Tests) 
 
 ## 🔧 Prerequisites
 
